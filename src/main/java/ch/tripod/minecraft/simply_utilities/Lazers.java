@@ -16,8 +16,8 @@
  */
 package ch.tripod.minecraft.simply_utilities;
 
-import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 import org.bukkit.ChatColor;
@@ -48,13 +48,13 @@ import org.bukkit.util.Vector;
  */
 public class Lazers implements Listener {
 
-    public static final List<String> LAZER_LORE = Arrays.asList( "SHOOP DA WOOP!");
+    private static final List<String> LAZER_LORE = Collections.singletonList("SHOOP DA WOOP!");
 
     private JavaPlugin plugin;
 
     private BukkitTask task;
 
-    public void enable(JavaPlugin plugin) {
+    void enable(JavaPlugin plugin) {
         this.plugin = plugin;
         NamespacedKey NS_SIMPLY_UTILITIES_LAZERS = new NamespacedKey(plugin, "lazers");
         ItemStack lazer = new ItemStack(Material.DISPENSER);
@@ -77,12 +77,12 @@ public class Lazers implements Listener {
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
     }
 
-    public void disable() {
+    void disable() {
         task.cancel();
 
     }
 
-    public String getKey(Location loc) {
+    private String getKey(Location loc) {
         return "lazer-" + loc.getX() + ":" + loc.getY() + ":" + loc.getZ();
     }
 
@@ -137,21 +137,20 @@ public class Lazers implements Listener {
                 head.setItemMeta(meta);
                 a.setHelmet(head);
 
-                // a.setBodyPose(new EulerAngle(0, angle, 0));
+                loc.add(0, 0.5, 0);
+                float red = 0f;
+                float green = 0.570312f;
+                float blue = 0f;
                 for(int i = 0; i <360; i+=5){
-                    Location flameloc = loc;
-                    flameloc.setZ(flameloc.getZ() + Math.cos(i)*5 - 2.5);
-                    flameloc.setX(flameloc.getX() + Math.sin(i)*5 - 2.5);
-                    float red = 0f;
-                    float green = 0.570312f;
-                    float blue = 0f;
-                    loc.getWorld().spigot().playEffect(flameloc, Effect.COLOURED_DUST, 0, 1, red, green, blue, 1, 0, 64);
+                    Location l = loc.clone();
+                    l.add(Math.cos(i)*5 - 2.5, 0, Math.sin(i)*5 - 2.5);
+                    loc.getWorld().spigot().playEffect(l, Effect.COLOURED_DUST, 0, 1, red, green, blue, 1, 0, 64);
                 }
             }
         }
     }
 
-    public ArmorStand getStand(World world, String key) {
+    private ArmorStand getStand(World world, String key) {
         for (ArmorStand a: world.getEntitiesByClass(ArmorStand.class)) {
             if (a.getCustomName().equals(key)) {
                 return a;

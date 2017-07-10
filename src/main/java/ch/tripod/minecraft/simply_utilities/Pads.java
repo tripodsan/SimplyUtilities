@@ -40,11 +40,12 @@ public class Pads {
 
     private JavaPlugin plugin;
 
-    public void enable(JavaPlugin plugin) {
+    void enable(JavaPlugin plugin) {
+        this.plugin = plugin;
         task = plugin.getServer().getScheduler().runTaskTimer(plugin, new ScanForPads(), 1L, 1L);
     }
 
-    public void disable() {
+    void disable() {
         task.cancel();
     }
 
@@ -52,7 +53,7 @@ public class Pads {
 
         private final Map<String, Integer> CONVEYOR_SPEED = new HashMap<>();
 
-        public ScanForPads() {
+        private ScanForPads() {
             CONVEYOR_SPEED.put("CONCRETE:14", 1);
             CONVEYOR_SPEED.put("CONCRETE:1", 2);
             CONVEYOR_SPEED.put("CONCRETE:4", 3);
