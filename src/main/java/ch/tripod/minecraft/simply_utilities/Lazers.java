@@ -38,6 +38,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.ShapedRecipe;
@@ -51,6 +52,8 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.EulerAngle;
 import org.bukkit.util.Vector;
+
+import static org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK;
 
 /**
  * {@code ExampleListener}...
@@ -103,6 +106,18 @@ public class Lazers implements Listener {
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         event.setJoinMessage("Welcome, " + event.getPlayer().getName() + "!");
+    }
+
+    @EventHandler
+    public void onPlayerInteract(PlayerInteractEvent event) {
+        if (event.getAction() == RIGHT_CLICK_BLOCK) {
+            Block b = event.getClickedBlock();
+            ItemStack item = event.getItem();
+            if (item.getType() == Material.SHEARS && b.getType() == Material.BANNER) {
+                event.getPlayer().sendMessage("Your tried to shear a banner...");
+                b.setData((byte) ((b.getData() + 1) & 0x0f));
+            }
+        }
     }
 
     @EventHandler
