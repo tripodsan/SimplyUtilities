@@ -27,6 +27,8 @@ import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.SkullType;
 import org.bukkit.World;
+import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -38,6 +40,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
+import org.bukkit.material.Banner;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.EulerAngle;
@@ -57,14 +60,13 @@ public class Lazers implements Listener {
     void enable(JavaPlugin plugin) {
         this.plugin = plugin;
         NamespacedKey NS_SIMPLY_UTILITIES_LAZERS = new NamespacedKey(plugin, "lazers");
-        ItemStack lazer = new ItemStack(Material.DISPENSER);
 
+        ItemStack lazer = new ItemStack(Material.DISPENSER);
         ItemMeta im = lazer.getItemMeta();
         im.setDisplayName(ChatColor.DARK_RED + "Lazer");
         im.setLore(LAZER_LORE);
         lazer.setItemMeta(im);
-
-        ShapedRecipe lazerRecp =     new ShapedRecipe(NS_SIMPLY_UTILITIES_LAZERS, lazer);
+        ShapedRecipe lazerRecp = new ShapedRecipe(NS_SIMPLY_UTILITIES_LAZERS, lazer);
         lazerRecp.shape("IDI","RER","IGI");
         lazerRecp.setIngredient('I', Material.IRON_INGOT);
         lazerRecp.setIngredient('D', Material.DIAMOND);
@@ -79,7 +81,6 @@ public class Lazers implements Listener {
 
     void disable() {
         task.cancel();
-
     }
 
     private String getKey(Location loc) {
@@ -101,26 +102,23 @@ public class Lazers implements Listener {
             im = player.getItemInHand().getItemMeta();
             if (LAZER_LORE.equals(im.getLore())) {
 
-                float angle = 0;
+                Vector dir;
                 switch (event.getBlock().getData()) {
-                    case 2:
-                        angle = 90;//(float) Math.toRadians(90);
-                        break;
-                    case 3:
-                        angle = 180;//(float) Math.toRadians(180);
-                        break;
-                    case 4:
-                        angle = 270;//(float) Math.toRadians(270);
-                        break;
+                    default:
+                    case 0: dir = new Vector(1, 0, 0); break;
+                    case 1: dir = new Vector(-1, 0, 0); break;
+                    case 2: dir = new Vector(0, 1, 0); break;
+                    case 3: dir = new Vector(0, -1, 0); break;
+                    case 4: dir = new Vector(0, 0, 1); break;
+                    case 5: dir = new Vector(0, 0, -1); break;
                 }
 
-                player.sendMessage(ChatColor.AQUA + "You have placed down a lazer! " + angle);
+                player.sendMessage(ChatColor.AQUA + "You have placed down a lazer! " + dir);
 
                 Location loc = event.getBlock().getLocation();
                 String key = getKey(loc);
                 loc.add(0.5, 0, 0.5);
-                loc.setPitch(0);
-                loc.setYaw(angle);
+                loc.setDirection(dir);
                 ArmorStand a = player.getWorld().spawn(loc, ArmorStand.class);
                 a.teleport(loc);
                 a.setCustomName(key);
@@ -150,41 +148,98 @@ public class Lazers implements Listener {
         }
     }
 
-    private ArmorStand getStand(World world, String key) {
-        for (ArmorStand a: world.getEntitiesByClass(ArmorStand.class)) {
-            if (a.getCustomName().equals(key)) {
-                return a;
-            }
-        }
-        return null;
-    }
-
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event) {
         Player player = event.getPlayer();
         if(event.getBlock().getType() == Material.DISPENSER) {
             String key = getKey(event.getBlock().getLocation());
-            ArmorStand a = getStand(event.getBlock().getWorld(), key);
+            Lazer a = getLazer(event.getBlock().getWorld(), key);
             if (a != null) {
                 player.sendMessage("you broke " + key);
-                a.remove();
+                a.stand.remove();
             }
         }
     }
 
-    private void shoot(Location loc, float phase) {
-        float red = 0f;
-        float green = 0.570312f;
-        float blue = 0f;
-        Vector dir = new Vector(1,0 ,0);
-        for (float d = 0; d<20; d+=0.25) {
-            Location l = loc.clone();
-            l.add(phase, 0.5f, (Math.random()-0.5f)*0.3f);
-            Vector v = dir.clone();
-            v.multiply(d);
-            l.add(v);
-            loc.getWorld().spigot().playEffect(l, Effect.COLOURED_DUST, 0, 1, red, green, blue, 1, 0, 64);
+    private Lazer getLazer(World world, String key) {
+        for (ArmorStand a: world.getEntitiesByClass(ArmorStand.class)) {
+            if (a.getCustomName().equals(key)) {
+                return new Lazer(a);
+            }
         }
+        return null;
+    }
+
+    private class Lazer {
+
+        private static final float COLOR_RED = 0f;
+        private static final float COLOR_GREEN = 0.570312f;
+        private static final float COLOR_BLUE = 0f;
+
+        private final ArmorStand stand;
+
+        private final World.Spigot spigot;
+
+        private float phase = 0;
+
+        private Lazer(ArmorStand stand) {
+            this.stand = stand;
+            spigot = stand.getWorld().spigot();
+        }
+
+        private Lazer setPhase(float phase) {
+            this.phase = phase;
+            return this;
+        }
+
+        private void trace() {
+            // init with location and direction from armour stand
+            Location l = stand.getLocation();
+            Vector v = l.getDirection();
+            double x0 = l.getX();
+            double y0 = l.getY() + 0.5;
+            double z0 = l.getZ();
+
+            // trace the ray using a linear function
+            double distance = 20;
+            for (double i=0; i<distance; i+= 0.25) {
+                Vector v1 = v.clone();
+                v1.multiply(i + phase);
+                l.setX(x0 + v.getX());
+                l.setY(y0 + v.getY());
+                l.setZ(z0 + v.getZ());
+                Block b = l.getBlock();
+                if (b.getType() == Material.BANNER) {
+                    // get normal of banner face
+                    Banner banner = (Banner) b.getState().getData();
+                    BlockFace face = banner.getFacing();
+                    Vector n = new Vector(face.getModX(), face.getModY(), face.getModZ());
+                    n.normalize();
+                    
+                    // reflect direction V' = -2*(V dot N)*N + V
+                    Vector vp = v.clone();
+                    vp.dot(n);
+                    vp.multiply(n);
+                    vp.multiply(-2);
+                    vp.add(v);
+                    vp.normalize();
+                    v = vp;
+
+                    // reset distance
+                    distance = 20;
+                }
+                else if (b.getType() != Material.AIR) {
+                    // else, stop tracing
+                    break;
+                }
+                paint(l);
+            }
+        }
+
+        private void paint(Location l) {
+            spigot.playEffect(l, Effect.COLOURED_DUST, 0, 1, COLOR_RED, COLOR_GREEN, COLOR_BLUE, 1, 0, 64);
+        }
+
     }
 
     private class LazerScanner implements Runnable {
@@ -198,7 +253,7 @@ public class Lazers implements Listener {
                     if (!a.getCustomName().startsWith("lazer-")) {
                         continue;
                     }
-                    shoot(a.getLocation(), phase);
+                    new Lazer(a).setPhase(phase).trace();
                 }
             }
             phase += 0.05;
