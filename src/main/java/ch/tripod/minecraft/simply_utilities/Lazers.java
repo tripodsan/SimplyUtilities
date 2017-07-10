@@ -16,8 +16,11 @@
  */
 package ch.tripod.minecraft.simply_utilities;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 
 import org.bukkit.ChatColor;
@@ -94,7 +97,7 @@ public class Lazers implements Listener {
     }
 
     private String getKey(Location loc) {
-        return "lazer-" + loc.getX() + ":" + loc.getY() + ":" + loc.getZ();
+        return "lazer-" + loc.getBlockX() + ":" + loc.getBlockY() + ":" + loc.getBlockZ();
     }
 
     @EventHandler
@@ -171,17 +174,96 @@ public class Lazers implements Listener {
         return null;
     }
 
+    private boolean hit(Location l, Vector v) {
+        Block b = l.getBlock();
+        if (b.getType() == Material.BANNER) {
+            // get normal of banner face
+            Banner banner = (Banner) b.getState().getData();
+            BlockFace face = banner.getFacing();
+            Vector n = new Vector(face.getModX(), face.getModY(), face.getModZ());
+            n.normalize();
+
+            // reflect direction V' = -2*(V dot N)*N + V
+            Vector vo = v.clone();
+            v.dot(n);
+            v.multiply(n);
+            v.multiply(-2);
+            v.add(vo);
+            v.normalize();
+
+            return false;
+        }
+        else if (b.getType() == Material.SAND) {
+            List<MetadataValue> meta = b.getState().getMetadata(KEY_DAMAGE);
+            int damage = 0;
+            if (meta != null && !meta.isEmpty()) {
+                damage = meta.get(0).asInt();
+            }
+            damage++;
+            plugin.getLogger().info("block at " + b.getLocation() + " damaged by lazer: " + damage);
+            if (damage > 20) {
+                b.breakNaturally();
+            } else {
+                b.getState().setMetadata(KEY_DAMAGE, new FixedMetadataValue(plugin, damage));
+            }
+            return true;
+        }
+
+        return b.getType() != Material.AIR;
+    }
+
+
+    private class Photon {
+
+        private float[] color;
+
+        private Location l;
+
+        private Vector v;
+
+        private long age;
+
+        private String prevBlock = "";
+
+        public Photon(Location l, Vector v, float[] color) {
+            this.l = l;
+            this.v = v;
+            this.color = color;
+        }
+
+        boolean update() {
+            l.add(v);
+            Block b = l.getBlock();
+            String key = getKey(l);
+            if (!key.equals(prevBlock) && hit(l, v)) {
+                return false;
+            }
+            prevBlock = key;
+            paint();
+
+            return age++ <= 100;
+        }
+
+        private void paint() {
+            l.getWorld().spigot().playEffect(l, Effect.COLOURED_DUST, 0, 1, color[0], color[1], color[2], 1, 0, 64);
+        }
+
+    }
+
+
     private class Lazer {
 
-        private static final float COLOR_RED = 0f;
-        private static final float COLOR_GREEN = 0.570312f;
-        private static final float COLOR_BLUE = 0f;
+        private final float[] COLOR_GOLD = {0f, 0.570312f, 0f};
 
         private final ArmorStand stand;
 
         private final World.Spigot spigot;
 
         private float phase = 0;
+
+        private int MAX_PHOTONS = 10000;
+
+        private List<Photon> photons = new LinkedList<>();
 
         private Lazer(ArmorStand stand) {
             this.stand = stand;
@@ -191,6 +273,22 @@ public class Lazers implements Listener {
         private Lazer setPhase(float phase) {
             this.phase = phase;
             return this;
+        }
+
+        private void update() {
+            Location l = stand.getLocation();
+            l.add(0, 0.5, 0);
+            Vector v = l.getDirection();
+            v.multiply(0.25);
+            photons.add(new Photon(l, v, COLOR_GOLD));
+
+            Iterator<Photon> it = photons.iterator();
+            while (it.hasNext()) {
+                Photon p = it.next();
+                if (!p.update()) {
+                    it.remove();
+                }
+            }
         }
 
         private void trace() {
@@ -203,6 +301,7 @@ public class Lazers implements Listener {
 
             // trace the ray using a linear function
             double distance = 20;
+            String prevBlock = "";
             for (double i=0; i<distance; i+= 0.25) {
                 Vector v1 = v.clone();
                 v1.multiply(i + phase);
@@ -210,50 +309,54 @@ public class Lazers implements Listener {
                 l.setY(y0 + v.getY());
                 l.setZ(z0 + v.getZ());
                 Block b = l.getBlock();
-                if (b.getType() == Material.BANNER) {
-                    // get normal of banner face
-                    Banner banner = (Banner) b.getState().getData();
-                    BlockFace face = banner.getFacing();
-                    Vector n = new Vector(face.getModX(), face.getModY(), face.getModZ());
-                    n.normalize();
+                String key = getKey(b.getLocation());
+                if (!key.equals(prevBlock)) {
+                    prevBlock = key;
+                    if (b.getType() == Material.BANNER) {
+                        // get normal of banner face
+                        Banner banner = (Banner) b.getState().getData();
+                        BlockFace face = banner.getFacing();
+                        Vector n = new Vector(face.getModX(), face.getModY(), face.getModZ());
+                        n.normalize();
 
-                    // reflect direction V' = -2*(V dot N)*N + V
-                    Vector vp = v.clone();
-                    vp.dot(n);
-                    vp.multiply(n);
-                    vp.multiply(-2);
-                    vp.add(v);
-                    vp.normalize();
-                    v = vp;
+                        // reflect direction V' = -2*(V dot N)*N + V
+                        Vector vp = v.clone();
+                        vp.dot(n);
+                        vp.multiply(n);
+                        vp.multiply(-2);
+                        vp.add(v);
+                        vp.normalize();
+                        v = vp;
 
-                    // reset distance
-                    distance = 20;
-                }
-                else if (b.getType() == Material.SAND) {
-                    List<MetadataValue> meta = b.getState().getMetadata(KEY_DAMAGE);
-                    int damage = 0;
-                    if (meta != null && !meta.isEmpty()) {
-                        damage = meta.get(0).asInt();
+                        // reset distance
+                        distance = 20;
                     }
-                    damage++;
-                    plugin.getLogger().info("block at " + b.getLocation() + " damaged by lazer: " + damage);
-                    if (damage > 20) {
-                        b.breakNaturally();
-                    } else {
-                        b.getState().setMetadata(KEY_DAMAGE, new FixedMetadataValue(plugin, damage));
+                    else if (b.getType() == Material.SAND) {
+                        List<MetadataValue> meta = b.getState().getMetadata(KEY_DAMAGE);
+                        int damage = 0;
+                        if (meta != null && !meta.isEmpty()) {
+                            damage = meta.get(0).asInt();
+                        }
+                        damage++;
+                        plugin.getLogger().info("block at " + b.getLocation() + " damaged by lazer: " + damage);
+                        if (damage > 20) {
+                            b.breakNaturally();
+                        } else {
+                            b.getState().setMetadata(KEY_DAMAGE, new FixedMetadataValue(plugin, damage));
+                        }
+                        break;
                     }
-                    break;
-                }
-                else if (b.getType() != Material.AIR) {
-                    // else, stop tracing
-                    break;
+                    else if (b.getType() != Material.AIR) {
+                        // else, stop tracing
+                        break;
+                    }
                 }
                 paint(l);
             }
         }
 
         private void paint(Location l) {
-            spigot.playEffect(l, Effect.COLOURED_DUST, 0, 1, COLOR_RED, COLOR_GREEN, COLOR_BLUE, 1, 0, 64);
+            spigot.playEffect(l, Effect.COLOURED_DUST, 0, 1, COLOR_GOLD[0], COLOR_GOLD[1], COLOR_GOLD[2], 1, 0, 64);
         }
 
     }
