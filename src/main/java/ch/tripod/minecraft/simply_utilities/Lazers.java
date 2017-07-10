@@ -41,6 +41,7 @@ import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.material.Banner;
+import org.bukkit.material.Dispenser;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.EulerAngle;
@@ -107,18 +108,9 @@ public class Lazers implements Listener {
             player.sendMessage("stack is " + im.getDisplayName());
             im = player.getItemInHand().getItemMeta();
             if (LAZER_LORE.equals(im.getLore())) {
-
-                Vector dir;
-                switch (event.getBlock().getData()) {
-                    default:
-                    case 0: dir = new Vector(1, 0, 0); break;
-                    case 1: dir = new Vector(-1, 0, 0); break;
-                    case 2: dir = new Vector(0, 1, 0); break;
-                    case 3: dir = new Vector(0, -1, 0); break;
-                    case 4: dir = new Vector(0, 0, 1); break;
-                    case 5: dir = new Vector(0, 0, -1); break;
-                }
-
+                Dispenser dispenser = (Dispenser) event.getBlock().getState().getData();
+                BlockFace face = dispenser.getFacing();
+                Vector dir = new Vector(face.getModX(), face.getModY(), face.getModZ());
                 player.sendMessage(ChatColor.AQUA + "You have placed down a lazer! " + dir);
 
                 Location loc = event.getBlock().getLocation();
