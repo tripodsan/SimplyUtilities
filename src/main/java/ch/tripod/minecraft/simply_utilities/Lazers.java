@@ -236,11 +236,13 @@ public class Lazers implements Listener {
                         damage = meta.get(0).asInt();
                     }
                     damage++;
+                    plugin.getLogger().info("block at " + b.getLocation() + " damaged by lazer: " + damage);
                     if (damage > 20) {
                         b.breakNaturally();
                     } else {
                         b.getState().setMetadata(KEY_DAMAGE, new FixedMetadataValue(plugin, damage));
                     }
+                    break;
                 }
                 else if (b.getType() != Material.AIR) {
                     // else, stop tracing
