@@ -42,6 +42,8 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.material.Banner;
 import org.bukkit.material.Dispenser;
+import org.bukkit.metadata.FixedMetadataValue;
+import org.bukkit.metadata.MetadataValue;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.EulerAngle;
@@ -53,6 +55,7 @@ import org.bukkit.util.Vector;
 public class Lazers implements Listener {
 
     private static final List<String> LAZER_LORE = Collections.singletonList("SHOOP DA WOOP!");
+    public static final String KEY_DAMAGE = "lazers:damage";
 
     private NamespacedKey NS_SIMPLY_UTILITIES_LAZERS;
 
@@ -225,6 +228,19 @@ public class Lazers implements Listener {
 
                     // reset distance
                     distance = 20;
+                }
+                else if (b.getType() == Material.SAND) {
+                    List<MetadataValue> meta = b.getState().getMetadata(KEY_DAMAGE);
+                    int damage = 0;
+                    if (meta != null && !meta.isEmpty()) {
+                        damage = meta.get(0).asInt();
+                    }
+                    damage++;
+                    if (damage > 20) {
+                        b.breakNaturally();
+                    } else {
+                        b.getState().setMetadata(KEY_DAMAGE, new FixedMetadataValue(plugin, damage));
+                    }
                 }
                 else if (b.getType() != Material.AIR) {
                     // else, stop tracing
