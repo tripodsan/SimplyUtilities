@@ -214,7 +214,7 @@ public class Lazers implements Listener {
             double d = vp.dot(n) * -2;
             n.multiply(d);
             vp.add(n);
-            vp.normalize();
+//            vp.normalize();
             damp(vp);
             v.copy(vp);
             return false;
