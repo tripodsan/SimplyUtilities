@@ -53,13 +53,15 @@ public class Lazers implements Listener {
 
     private static final List<String> LAZER_LORE = Collections.singletonList("SHOOP DA WOOP!");
 
+    private NamespacedKey NS_SIMPLY_UTILITIES_LAZERS;
+
     private JavaPlugin plugin;
 
     private BukkitTask task;
 
     void enable(JavaPlugin plugin) {
         this.plugin = plugin;
-        NamespacedKey NS_SIMPLY_UTILITIES_LAZERS = new NamespacedKey(plugin, "lazers");
+        NS_SIMPLY_UTILITIES_LAZERS = new NamespacedKey(plugin, "lazers");
 
         ItemStack lazer = new ItemStack(Material.DISPENSER);
         ItemMeta im = lazer.getItemMeta();
@@ -80,7 +82,11 @@ public class Lazers implements Listener {
     }
 
     void disable() {
-        task.cancel();
+        if (task != null) {
+            task.cancel();
+            task = null;
+        }
+        plugin.getServer().resetRecipes();
     }
 
     private String getKey(Location loc) {
@@ -215,7 +221,7 @@ public class Lazers implements Listener {
                     BlockFace face = banner.getFacing();
                     Vector n = new Vector(face.getModX(), face.getModY(), face.getModZ());
                     n.normalize();
-                    
+
                     // reflect direction V' = -2*(V dot N)*N + V
                     Vector vp = v.clone();
                     vp.dot(n);

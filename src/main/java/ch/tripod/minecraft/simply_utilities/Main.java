@@ -42,8 +42,14 @@ public class Main extends JavaPlugin {
     @Override
     public void onDisable() {
         super.onDisable();
-        lazers.disable();
-        pads.disable();
+        if (lazers != null) {
+            lazers.disable();
+            lazers = null;
+        }
+        if (pads != null) {
+            pads.disable();
+            pads = null;
+        }
         this.getLogger().info("Simply Utilities plugin disabled.");
     }
 

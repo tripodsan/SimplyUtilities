@@ -46,7 +46,10 @@ public class Pads {
     }
 
     void disable() {
-        task.cancel();
+        if (task != null) {
+            task.cancel();
+            task  = null;
+        }
     }
 
     public class ScanForPads implements Runnable {
