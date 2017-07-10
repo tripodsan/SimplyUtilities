@@ -19,6 +19,7 @@ package ch.tripod.minecraft.simply_utilities;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -87,7 +88,7 @@ public class Lazers implements Listener {
         lazerRecp.setIngredient('G', Material.GLASS);
         plugin.getServer().addRecipe(lazerRecp);
 
-        task = plugin.getServer().getScheduler().runTaskTimer(plugin, new LazerScanner(), 1L, 7L);
+        task = plugin.getServer().getScheduler().runTaskTimer(plugin, new LazerScanner(), 1L, 2L);
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
     }
 
@@ -113,7 +114,10 @@ public class Lazers implements Listener {
         if (event.getAction() == RIGHT_CLICK_BLOCK) {
             Block b = event.getClickedBlock();
             ItemStack item = event.getItem();
-            if (item.getType() == Material.SHEARS && b.getType() == Material.BANNER) {
+            if (b == null || item == null) {
+                return;
+            }
+            if (item.getType() == Material.SHEARS && b.getType() == Material.STANDING_BANNER) {
                 event.getPlayer().sendMessage("Your tried to shear a banner...");
                 b.setData((byte) ((b.getData() + 1) & 0x0f));
             }
@@ -180,10 +184,17 @@ public class Lazers implements Listener {
         }
     }
 
+    private HashMap<String, Lazer> lazers = new HashMap<>();
+
     private Lazer getLazer(World world, String key) {
         for (ArmorStand a: world.getEntitiesByClass(ArmorStand.class)) {
             if (a.getCustomName().equals(key)) {
-                return new Lazer(a);
+                Lazer l = lazers.get(key);
+                if (l == null) {
+                    l = new Lazer(a);
+                    lazers.put(key, l);
+                }
+                return l;
             }
         }
         return null;
@@ -191,7 +202,7 @@ public class Lazers implements Listener {
 
     private boolean hit(Location l, Vector v) {
         Block b = l.getBlock();
-        if (b.getType() == Material.BANNER) {
+        if (b.getType() == Material.STANDING_BANNER) {
             // get normal of banner face
             Banner banner = (Banner) b.getState().getData();
             BlockFace face = banner.getFacing();
@@ -199,12 +210,13 @@ public class Lazers implements Listener {
             n.normalize();
 
             // reflect direction V' = -2*(V dot N)*N + V
-            Vector vo = v.clone();
-            v.dot(n);
-            v.multiply(n);
-            v.multiply(-2);
-            v.add(vo);
-
+            Vector vp = v.clone();
+            double d = vp.dot(n) * -2;
+            n.multiply(d);
+            vp.add(n);
+            vp.normalize();
+            damp(vp);
+            v.copy(vp);
             return false;
         }
         else if (b.getType() == Material.SAND) {
@@ -214,12 +226,13 @@ public class Lazers implements Listener {
                 damage = meta.get(0).asInt();
             }
             damage++;
-            plugin.getLogger().info("block at " + b.getLocation() + " damaged by lazer: " + damage);
             if (damage > 20) {
+                b.getState().removeMetadata(KEY_DAMAGE, plugin);
                 b.breakNaturally();
             } else {
                 b.getState().setMetadata(KEY_DAMAGE, new FixedMetadataValue(plugin, damage));
             }
+            plugin.getLogger().info("block at " + b.getLocation() + " damaged by lazer: " + damage);
             return true;
         }
 
@@ -251,6 +264,7 @@ public class Lazers implements Listener {
             if (!key.equals(prevBlock) && hit(l, v)) {
                 return false;
             }
+            damp(v);
             prevBlock = key;
             paint();
 
@@ -270,6 +284,8 @@ public class Lazers implements Listener {
 
         private final ArmorStand stand;
 
+        private final String key;
+
         private final World.Spigot spigot;
 
         private float phase = 0;
@@ -281,6 +297,7 @@ public class Lazers implements Listener {
         private Lazer(ArmorStand stand) {
             this.stand = stand;
             spigot = stand.getWorld().spigot();
+            key = getKey(stand.getLocation());
         }
 
         private Lazer setPhase(float phase) {
@@ -292,6 +309,8 @@ public class Lazers implements Listener {
             Location l = stand.getLocation();
             l.add(0, 0.5, 0);
             Vector v = l.getDirection();
+            damp(v);
+            l.add(v);
             v.multiply(0.25);
             photons.add(new Photon(l, v, COLOR_GOLD));
             photons.removeIf(p -> !p.update());
@@ -301,24 +320,25 @@ public class Lazers implements Listener {
             // init with location and direction from armour stand
             Location l = stand.getLocation();
             Vector v = l.getDirection();
-            double x0 = l.getX();
-            double y0 = l.getY() + 0.5;
-            double z0 = l.getZ();
+            damp(v);
+            double x0 = l.getBlockX() + 0.5;
+            double y0 = l.getBlockY() + 0.5;
+            double z0 = l.getBlockZ() + 0.5;
 
             // trace the ray using a linear function
             double distance = 20;
             String prevBlock = "";
-            for (double i=0; i<distance; i+= 0.25) {
+            for (double i=1; i<distance; i+= 0.25) {
                 Vector v1 = v.clone();
                 v1.multiply(i + phase);
-                l.setX(x0 + v.getX());
-                l.setY(y0 + v.getY());
-                l.setZ(z0 + v.getZ());
+                l.setX(x0 + v1.getX());
+                l.setY(y0 + v1.getY());
+                l.setZ(z0 + v1.getZ());
                 Block b = l.getBlock();
                 String key = getKey(b.getLocation());
                 if (!key.equals(prevBlock)) {
                     prevBlock = key;
-                    if (b.getType() == Material.BANNER) {
+                    if (b.getType() == Material.STANDING_BANNER) {
                         // get normal of banner face
                         Banner banner = (Banner) b.getState().getData();
                         BlockFace face = banner.getFacing();
@@ -327,15 +347,18 @@ public class Lazers implements Listener {
 
                         // reflect direction V' = -2*(V dot N)*N + V
                         Vector vp = v.clone();
-                        vp.dot(n);
-                        vp.multiply(n);
-                        vp.multiply(-2);
-                        vp.add(v);
+                        double d = vp.dot(n) * -2;
+                        n.multiply(d);
+                        vp.add(n);
                         vp.normalize();
                         v = vp;
+                        damp(v);
 
-                        // reset distance
-                        distance = 20;
+                        // reset location and distance
+                        x0 = b.getX() + 0.5;
+                        y0 = b.getY() + 0.5;
+                        z0 = b.getZ() + 0.5;
+                        i = 0;
                     }
                     else if (b.getType() == Material.SAND) {
                         List<MetadataValue> meta = b.getState().getMetadata(KEY_DAMAGE);
@@ -344,12 +367,13 @@ public class Lazers implements Listener {
                             damage = meta.get(0).asInt();
                         }
                         damage++;
-                        plugin.getLogger().info("block at " + b.getLocation() + " damaged by lazer: " + damage);
                         if (damage > 20) {
+                            b.getState().removeMetadata(KEY_DAMAGE, plugin);
                             b.breakNaturally();
                         } else {
                             b.getState().setMetadata(KEY_DAMAGE, new FixedMetadataValue(plugin, damage));
                         }
+                        plugin.getLogger().info("block at " + b.getLocation() + " damaged by lazer: " + damage);
                         break;
                     }
                     else if (b.getType() != Material.AIR) {
@@ -367,6 +391,18 @@ public class Lazers implements Listener {
 
     }
 
+    private static void damp(Vector v) {
+        if (Math.abs(v.getX()) < 0.0001) {
+            v.setX(0);
+        }
+        if (Math.abs(v.getY()) < 0.0001) {
+            v.setY(0);
+        }
+        if (Math.abs(v.getZ()) < 0.0001) {
+            v.setZ(0);
+        }
+    }
+
     private class LazerScanner implements Runnable {
 
         float phase = 0;
@@ -378,7 +414,10 @@ public class Lazers implements Listener {
                     if (!a.getCustomName().startsWith("lazer-")) {
                         continue;
                     }
-                    new Lazer(a).setPhase(phase).trace();
+                    String key = getKey(a.getLocation());
+                    Lazer l = lazers.computeIfAbsent(key, k -> new Lazer(a));
+                    l.setPhase(phase).update();
+//                    new Lazer(a).setPhase(phase).trace();
                 }
             }
             phase += 0.05;
