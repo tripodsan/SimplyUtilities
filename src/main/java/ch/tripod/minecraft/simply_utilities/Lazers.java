@@ -189,7 +189,6 @@ public class Lazers implements Listener {
             v.multiply(n);
             v.multiply(-2);
             v.add(vo);
-            v.normalize();
 
             return false;
         }
@@ -233,7 +232,6 @@ public class Lazers implements Listener {
 
         boolean update() {
             l.add(v);
-            Block b = l.getBlock();
             String key = getKey(l);
             if (!key.equals(prevBlock) && hit(l, v)) {
                 return false;
@@ -281,14 +279,7 @@ public class Lazers implements Listener {
             Vector v = l.getDirection();
             v.multiply(0.25);
             photons.add(new Photon(l, v, COLOR_GOLD));
-
-            Iterator<Photon> it = photons.iterator();
-            while (it.hasNext()) {
-                Photon p = it.next();
-                if (!p.update()) {
-                    it.remove();
-                }
-            }
+            photons.removeIf(p -> !p.update());
         }
 
         private void trace() {
