@@ -65,9 +65,11 @@ public class Lazers implements Listener {
 
     private static final List<String> LAZER_LORE = Collections.singletonList("SHOOP DA WOOP!");
 
-    private static final List<String> PRISM_LORE_SPEED_BOOST = Collections.singletonList("Lazer Speed Boost");
+    private static final List<String> PRISM_LORE = Collections.singletonList("Use this to alter lazer.");
 
-    private static final List<String> MIRROR_LORE = Collections.singletonList("Lazer Mirror");
+    private static final List<String> MIRROR_LORE = Collections.singletonList("Use this to reflect lazers.");
+
+    private static final List<String> SPANNER_LORE = Collections.singletonList("Use this to turn mirrors.");
 
     public static final String KEY_DAMAGE = "lazers:damage";
 
@@ -111,15 +113,29 @@ public class Lazers implements Listener {
         {
             ItemStack prism = new ItemStack(Material.PRISMARINE_SHARD);
             ItemMeta im = prism.getItemMeta();
-            im.setDisplayName(ChatColor.GREEN + "Prism");
-            im.setLore(PRISM_LORE_SPEED_BOOST);
+            im.setDisplayName(ChatColor.AQUA + "Lazer Prism");
+            im.setLore(PRISM_LORE);
             prism.setItemMeta(im);
             ShapedRecipe recp = new ShapedRecipe(new NamespacedKey(plugin, "prism_boost"), prism);
             recp.shape("/#/", "G*G", "/#/");
             recp.setIngredient('/', Material.STICK);
             recp.setIngredient('#', Material.IRON_FENCE);
-            recp.setIngredient('G', Material.GLASS);
+            recp.setIngredient('G', Material.THIN_GLASS);
             recp.setIngredient('*', Material.PRISMARINE_SHARD);
+            plugin.getServer().addRecipe(recp);
+        }
+
+        // create spanner recipe
+        {
+            ItemStack shears = new ItemStack(Material.SHEARS);
+            ItemMeta im = shears.getItemMeta();
+            im.setDisplayName(ChatColor.AQUA + "Spanner");
+            im.setLore(SPANNER_LORE);
+            shears.setItemMeta(im);
+            ShapedRecipe recp = new ShapedRecipe(new NamespacedKey(plugin, "spanner"), shears);
+            recp.shape(" # ", " /#", "/  ");
+            recp.setIngredient('/', Material.STICK);
+            recp.setIngredient('#', Material.IRON_INGOT);
             plugin.getServer().addRecipe(recp);
         }
 
@@ -129,17 +145,16 @@ public class Lazers implements Listener {
             // Banner banner = (Banner) mirror.getData();
             // banner.setData((byte) 0);
             BannerMeta im = (BannerMeta) mirror.getItemMeta();
-            im.setDisplayName(ChatColor.YELLOW + "Mirror");
+            im.setDisplayName(ChatColor.WHITE + "Mirror");
             im.setLore(MIRROR_LORE);
 
-            im.setBaseColor(DyeColor.WHITE);
+            im.setBaseColor(DyeColor.BLACK);
             List<Pattern> patterns = new ArrayList<>();
-            patterns.add(new Pattern(DyeColor.RED, PatternType.HALF_HORIZONTAL));
-            patterns.add(new Pattern(DyeColor.BLACK, PatternType.RHOMBUS_MIDDLE));
-            patterns.add(new Pattern(DyeColor.RED, PatternType.STRIPE_TOP));
-            patterns.add(new Pattern(DyeColor.WHITE, PatternType.STRIPE_BOTTOM));
-            patterns.add(new Pattern(DyeColor.BLACK, PatternType.STRIPE_MIDDLE));
-            patterns.add(new Pattern(DyeColor.WHITE, PatternType.CIRCLE_MIDDLE));
+            patterns.add(new Pattern(DyeColor.SILVER, PatternType.BORDER));
+            patterns.add(new Pattern(DyeColor.SILVER, PatternType.RHOMBUS_MIDDLE));
+            patterns.add(new Pattern(DyeColor.SILVER, PatternType.CIRCLE_MIDDLE));
+            patterns.add(new Pattern(DyeColor.WHITE, PatternType.CROSS));
+            patterns.add(new Pattern(DyeColor.BLACK, PatternType.FLOWER));
             im.setPatterns(patterns);
 
             mirror.setItemMeta(im);
@@ -148,7 +163,7 @@ public class Lazers implements Listener {
             recp.setIngredient('/', Material.STICK);
             recp.setIngredient('I', Material.IRON_INGOT);
             recp.setIngredient('O', Material.GOLD_INGOT);
-            recp.setIngredient('G', Material.GLASS);
+            recp.setIngredient('G', Material.THIN_GLASS);
             plugin.getServer().addRecipe(recp);
         }
     }
@@ -178,8 +193,7 @@ public class Lazers implements Listener {
             if (b == null || item == null) {
                 return;
             }
-            if (item.getType() == Material.SHEARS && b.getType() == Material.STANDING_BANNER) {
-                event.getPlayer().sendMessage("Your tried to shear a banner...");
+            if (SPANNER_LORE.equals(item.getItemMeta().getLore()) && b.getType() == Material.STANDING_BANNER) {
                 b.setData((byte) ((b.getData() + 1) & 0x0f));
             }
         }
@@ -316,6 +330,9 @@ public class Lazers implements Listener {
 
                     // reflect direction V' = -2*(V dot N)*N + V
                     v.add(n.multiply(-2 * v.dot(n)));
+                    l.setX(b.getX() + 0.5);
+                    l.setY(b.getY() + 0.5);
+                    l.setZ(b.getZ() + 0.5);
                     age = 0;
                 }
                 else if (b.getType() == Material.SAND) {
