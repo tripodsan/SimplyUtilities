@@ -20,10 +20,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Color;
 import org.bukkit.DyeColor;
@@ -43,7 +42,9 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockDispenseEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.block.BlockRedstoneEvent;
 import org.bukkit.event.inventory.CraftItemEvent;
 import org.bukkit.event.inventory.PrepareItemCraftEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -53,7 +54,6 @@ import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.Recipe;
 import org.bukkit.inventory.ShapedRecipe;
-import org.bukkit.inventory.ShapelessRecipe;
 import org.bukkit.inventory.meta.BannerMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
@@ -241,6 +241,32 @@ public class Lazers implements Listener {
         }
     }
 
+//    @EventHandler
+//    public void onBlockRedstoneEvent(BlockRedstoneEvent event) {
+//        for (BlockFace face : new BlockFace[] { BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST, BlockFace.UP, BlockFace.DOWN }) {
+//            if (event.getBlock().getRelative(face).getType() == Material.DISPENSER) {
+//
+//
+//                Bukkit.getPluginManager().callEvent(new RedstoneToggleEvent(event.getBlock().getRelative(face), powered));
+//            }
+//        }
+//        plugin.getLogger().info("redstone event :at " + event.getBlock());
+//        Lazer lazer = getLazer(event.getBlock());
+//        if (lazer != null) {
+//            plugin.getLogger().info("redstone even: " + event.getNewCurrent());
+//            event.setNewCurrent(0);
+//        }
+//    }
+
+    @EventHandler
+    public void onDispenseItem(BlockDispenseEvent event) {
+        Lazer lazer = getLazer(event.getBlock());
+        if (lazer != null) {
+            lazer.toggle();
+            event.setCancelled(true);
+        }
+    }
+
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event) {
         Player player = event.getPlayer();
@@ -350,6 +376,14 @@ public class Lazers implements Listener {
         return null;
     }
 
+    private Lazer getLazer(Block block) {
+        if (block.getType() != Material.DISPENSER) {
+            return null;
+        }
+        String key = getKey(block.getLocation());
+        return getLazer(block.getLocation().getWorld(), key);
+    }
+
     private Lazer getLazer(ArmorStand a) {
         String key = a.getCustomName();
         if (key.startsWith("lazer-")) {
@@ -446,6 +480,7 @@ public class Lazers implements Listener {
 
         private static final List<String> PRISM_LORE = Collections.singletonList("Use this to alter lazers.");
 
+        private static final String COLOR_PREFIX = ChatColor.WHITE + "+Color: ";
         private final List<String> lore;
 
         private Color color;
@@ -470,10 +505,12 @@ public class Lazers implements Listener {
         private ItemStack toItemStack() {
             ItemStack prism = new ItemStack(Material.PRISMARINE_SHARD);
             ItemMeta im = prism.getItemMeta();
-            im.setDisplayName(ChatColor.AQUA + "Colored Lazer Prism");
             List<String> newLore = new ArrayList<>(lore);
             if (color != null) {
-                newLore.add("+Color: " + Integer.toHexString(color.asRGB()));
+                im.setDisplayName(ChatColor.AQUA + "Colored Lazer Prism");
+                newLore.add(COLOR_PREFIX + Integer.toHexString(color.asRGB()));
+            } else {
+                im.setDisplayName(ChatColor.AQUA + "Lazer Prism");
             }
             im.setLore(newLore);
             prism.setItemMeta(im);
@@ -495,8 +532,8 @@ public class Lazers implements Listener {
                         return null;
                     }
                 }
-                if (ll.startsWith("+Color: ")) {
-                    String cStr = ll.substring("+Color: ".length());
+                if (ll.startsWith(COLOR_PREFIX)) {
+                    String cStr = ll.substring(COLOR_PREFIX.length());
                     Color pColor = Color.fromRGB(Integer.parseInt(cStr, 16));
                     // plugin.getLogger().info("existing prism color: " + pColor);
                     if (c == null) {
@@ -522,6 +559,8 @@ public class Lazers implements Listener {
 
         private final String key;
 
+        private boolean power;
+
         private Lazer(ArmorStand stand) {
             this.stand = stand;
             key = getKey(stand.getLocation());
@@ -531,23 +570,32 @@ public class Lazers implements Listener {
             Location l = stand.getLocation();
 
             Color color = Color.RED;
+            power = false;
             if (l.getBlock().getType() == Material.DISPENSER) {
                 InventoryHolder holder = (InventoryHolder) l.getBlock().getState();
                 Inventory i = holder.getInventory();
                 LazerPrism prism = null;
                 for (ItemStack is: i.getContents()) {
-                    if (is != null && is.getType() == Material.PRISMARINE_SHARD) {
+                    if (is == null) {
+                        continue;
+                    }
+                    if (is.getType() == Material.PRISMARINE_SHARD) {
                         prism = LazerPrism.fromItemStack(is);
                         if (prism != null) {
                             if (prism.color != null) {
                                 color = prism.color;
                             }
                         }
+                    } else if (is.getType() == Material.REDSTONE) {
+                        power = true;
                     }
                 }
 
             } else {
                 // hmm what to do?
+            }
+            if (!power) {
+                return;
             }
             l.add(0, 0.5, 0);
             Vector v = l.getDirection();
@@ -558,6 +606,25 @@ public class Lazers implements Listener {
             photons.add(new Photon(l, v, color));
         }
 
+        public Block getBlock() {
+            return stand.getLocation().getBlock();
+        }
+
+        public void toggle() {
+            Block b = getBlock();
+            if (b.getType() != Material.DISPENSER) {
+                return;
+            }
+            InventoryHolder holder = (InventoryHolder) b.getState();
+            Inventory i = holder.getInventory();
+            plugin.getLogger().info("toggle...:" + i.contains(Material.REDSTONE));
+            if (i.contains(Material.REDSTONE)) {
+                i.remove(Material.REDSTONE);
+            } else {
+                i.addItem(new ItemStack(Material.REDSTONE));
+            }
+
+        }
     }
 
     private static void damp(Vector v) {
