@@ -16,6 +16,9 @@
  */
 package ch.tripod.minecraft.simply_utilities;
 
+import java.lang.reflect.Field;
+
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.plugin.java.JavaPlugin;
 
 /**
@@ -27,6 +30,8 @@ public class Main extends JavaPlugin {
 
     private Pads pads;
 
+    private Infusion infusion;
+
     @Override
     public void onEnable() {
         super.onEnable();
@@ -35,6 +40,9 @@ public class Main extends JavaPlugin {
 
         pads = new Pads();
         pads.enable(this);
+
+        infusion = new Infusion();
+        infusion.enable(this);
 
         this.getLogger().info("Simply Utilities plugin enabled.");
     }
@@ -49,6 +57,10 @@ public class Main extends JavaPlugin {
         if (pads != null) {
             pads.disable();
             pads = null;
+        }
+        if (infusion != null) {
+            infusion.disable();
+            infusion = null;
         }
         this.getLogger().info("Simply Utilities plugin disabled.");
     }

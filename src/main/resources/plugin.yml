@@ -2,3 +2,7 @@ name: ${project.name}
 version: ${project.version}
 author: ${author}
 main: ${mainClass}
+commands:
+   simply:
+      description: This is a demo command.
+      usage: /<command>
