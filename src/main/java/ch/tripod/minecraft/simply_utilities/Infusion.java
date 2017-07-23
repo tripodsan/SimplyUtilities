@@ -16,26 +16,43 @@
  */
 package ch.tripod.minecraft.simply_utilities;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
 import org.bukkit.ChatColor;
+import org.bukkit.Effect;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.SkullType;
+import org.bukkit.World;
+import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.enchantments.Enchantment;
+import org.bukkit.entity.ArmorStand;
+import org.bukkit.entity.ItemFrame;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.ShapelessRecipe;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.SkullMeta;
+import org.bukkit.material.Directional;
+import org.bukkit.material.MaterialData;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitTask;
+import org.bukkit.util.EulerAngle;
+import org.bukkit.util.Vector;
 
 import static org.bukkit.event.block.Action.LEFT_CLICK_BLOCK;
 import static org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK;
@@ -62,18 +79,105 @@ public class Infusion implements Listener, CommandExecutor {
     private StructureVerifier verifier = new StructureVerifier().load(
             "{\"dx\":6,\"dy\":6,\"dz\":6,\"matrix\":\".aaaaa.abcccbaacdadcaacaeacaacdadcaabcccba.aaaaa....f.................f..g..f.................f......h.................h.....h.................h......f.................f..i..f.................f......j......j..........jj.k.jj..........j......j.............l...........l.k.l...........l....................l......l....lllll....l......l..........\",\"map\":{\"k\":{\"mat\":\"STAINED_GLASS_PANE\"},\"d\":{\"mat\":\"BLACK_GLAZED_TERRACOTTA\"},\"j\":{\"mat\":\"NETHER_BRICK_STAIRS\"},\"l\":{\"mat\":\"STAINED_GLASS\"},\"a\":{\"mat\":\"RED_NETHER_BRICK\"},\"i\":{\"mat\":\"END_ROD\"},\"h\":{\"mat\":\"CONCRETE\"},\"g\":{\"mat\":\"CAULDRON\"},\"f\":{\"mat\":\"NETHER_BRICK\"},\".\":{\"mat\":\"AIR\"},\"e\":{\"mat\":\"BARRIER\"},\"b\":{\"mat\":\"REDSTONE_BLOCK\"},\"c\":{\"mat\":\"CONCRETE_POWDER\"}}}");
 
+    private HashMap<String, Altar> altars = new HashMap<>();
+
+    private class InfusionRecipe  {
+
+        private List<ItemStack> output = new LinkedList<>();
+
+        private List<ItemStack> ingredients = new LinkedList<>();
+
+        public List<ItemStack> getOutput() {
+            return output;
+        }
+
+        private void addOutput(Material mat, int count) {
+            output.add(new ItemStack(mat, count));
+        }
+
+        private void addIngredient(Material mat, int count) {
+            ingredients.add(new ItemStack(mat, count));
+        }
+
+        public List<ItemStack> getIngredientList() {
+            ArrayList<ItemStack> result = new ArrayList<ItemStack>(ingredients.size());
+            for (ItemStack ingredient : ingredients) {
+                result.add(ingredient.clone());
+            }
+            return result;
+        }
+
+
+        boolean matches(List<ItemStack> items) {
+            List<ItemStack> ingredients = getIngredientList();
+            for (ItemStack item: items) {
+                for (ItemStack i: ingredients) {
+                    if (i.getType() == item.getType()) {
+                        i.setAmount(i.getAmount() - 1);
+                        item.setAmount(0);
+                        plugin.getLogger().info("matched ingredient:" + i);
+                    }
+                }
+            }
+            for (ItemStack i: ingredients) {
+                // plugin.getLogger().info("ingredient:" + i);
+                if (i.getAmount() != 0) {
+                    return false;
+                }
+            }
+            for (ItemStack i: items) {
+                // plugin.getLogger().info("item:" + i);
+                if (i.getAmount() != 0) {
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+
+    private List<InfusionRecipe> infusionRecipes = new LinkedList<>();
+    private void initRecipies() {
+        InfusionRecipe r = new InfusionRecipe();
+        r.addIngredient(Material.WATER_BUCKET, 3);
+        r.addIngredient(Material.SNOW_BALL, 1);
+        r.addOutput(Material.ICE, 1);
+        r.addOutput(Material.BUCKET, 3);
+        infusionRecipes.add(r);
+    }
+
+    private BukkitTask task;
+
     void enable(JavaPlugin plugin) {
         this.plugin = plugin;
+        initRecipies();
         //task = plugin.getServer().getScheduler().runTaskTimer(plugin, new ScanForPads(), 1L, 1L);
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
         plugin.getCommand("simply").setExecutor(this);
+        task = plugin.getServer().getScheduler().runTaskTimer(plugin, new AltarScanner(), 1L, 2L);
     }
 
     void disable() {
-//        if (task != null) {
-//            task.cancel();
-//            task  = null;
-//        }
+        if (task != null) {
+            task.cancel();
+            task  = null;
+        }
+    }
+
+    private class AltarScanner implements Runnable {
+
+        float phase = 0;
+
+        @Override
+        public void run() {
+            for (World w : plugin.getServer().getWorlds()) {
+                for (ArmorStand a : w.getEntitiesByClass(ArmorStand.class)) {
+                    Altar l = getAltar(a);
+                    if (l != null) {
+                        l.update();
+                    }
+                }
+            }
+        }
     }
 
     private Corners getCorners(Player p) {
@@ -145,10 +249,156 @@ public class Infusion implements Listener, CommandExecutor {
 
         if(event.getBlock().getType() == Material.CAULDRON) {
             if (verifier.verify(event.getPlayer(), event.getBlock().getLocation())) {
-
+                createAltar(event.getPlayer(), event.getBlock().getLocation(), event.getBlock().getState().getData());
             }
         }
     }
 
+    @EventHandler
+    public void onBlockBreak(BlockBreakEvent event) {
+        Player player = event.getPlayer();
+        if(event.getBlock().getType() == Material.CAULDRON) {
+            // todo: recheck structure
+            String key = getKey(event.getBlock().getLocation());
+            if (removeAltar(event.getBlock().getWorld(), key)) {
+                player.sendMessage("you broke " + key);
+            }
+        }
+    }
 
+    private String getKey(Location loc) {
+        return "altar-" + loc.getBlockX() + ":" + loc.getBlockY() + ":" + loc.getBlockZ();
+    }
+
+    private Altar createAltar(Player player, Location loc, MaterialData data) {
+        String key = getKey(loc);
+        loc.add(0.5, 0, 0.5);
+        if (data instanceof Directional) {
+            BlockFace face = ((Directional) data).getFacing();
+            Vector dir = new Vector(face.getModX(), face.getModY(), face.getModZ());
+            loc.setDirection(dir);
+        }
+
+        ArmorStand a = player.getWorld().spawn(loc, ArmorStand.class);
+        a.teleport(loc);
+        a.setCustomName(key);
+        a.setCustomNameVisible(true);
+        a.setVisible(true);
+        a.setGravity(false);
+        a.setMarker(true);
+        a.setArms(true);
+        a.setLeftArmPose(new EulerAngle(Math.toRadians(170), Math.toRadians(170), Math.toRadians(31)));
+
+        ItemStack head = new ItemStack(Material.SKULL_ITEM, 1, (short) SkullType.PLAYER.ordinal());
+        SkullMeta meta = (SkullMeta) head.getItemMeta();
+        meta.setOwner(player.getName());
+        head.setItemMeta(meta);
+        a.setHelmet(head);
+
+        // play effect
+        float red = 0f;
+        float green = 0.570312f;
+        float blue = 0f;
+        for(int i = 0; i <360; i+=5){
+            Location l = loc.clone();
+            l.add(Math.cos(i)*3, 0, Math.sin(i)*3);
+            loc.getWorld().spigot().playEffect(l, Effect.COLOURED_DUST, 0, 1, red, green, blue, 1, 0, 64);
+        }
+
+        return getAltar(a);
+    }
+
+    private boolean removeAltar(World world, String key) {
+        Altar a = getAltar(world, key);
+        if (a != null) {
+            a.stand.remove();
+            altars.remove(key);
+            return true;
+        }
+        return false;
+    }
+
+    private Altar getAltar(World world, String key) {
+        for (ArmorStand a: world.getEntitiesByClass(ArmorStand.class)) {
+            if (a.getCustomName().equals(key)) {
+                return altars.computeIfAbsent(key, k -> new Altar(a));
+            }
+        }
+        return null;
+    }
+
+    private Altar getAltar(Block block) {
+        if (block.getType() != Material.CAULDRON) {
+            return null;
+        }
+        String key = getKey(block.getLocation());
+        return getAltar(block.getLocation().getWorld(), key);
+    }
+
+    private Altar getAltar(ArmorStand a) {
+        String key = a.getCustomName();
+        if (key.startsWith("altar-")) {
+            return altars.computeIfAbsent(key, k -> new Altar(a));
+        } else {
+            return null;
+        }
+    }
+
+    private class Altar {
+
+        private final ArmorStand stand;
+
+        private final String key;
+
+        private final Vector center;
+
+        private final List<ItemFrame> frames = new ArrayList<>(4);
+
+        public Altar(ArmorStand stand) {
+            this.stand = stand;
+            this.key = getKey(stand.getLocation());
+
+            // get item frames
+            center = stand.getLocation().toVector();
+            center.setX(center.getBlockX());
+            center.setY(center.getBlockY());
+            center.setZ(center.getBlockZ());
+            for (ItemFrame i: stand.getLocation().getWorld().getEntitiesByClass(ItemFrame.class)) {
+                Vector v = i.getLocation().toVector();
+                v.setX(v.getBlockX());
+                v.setY(v.getBlockY());
+                v.setZ(v.getBlockZ());
+                plugin.getLogger().info("distance is: " + v.distanceSquared(center));
+                if (v.distanceSquared(center) == 5) {
+                    plugin.getLogger().info("found item frame: " + i);
+                    frames.add(i);
+                }
+            }
+        }
+
+        public void update() {
+
+            List<ItemStack> items = new ArrayList<>(4);
+            for (ItemFrame frame: frames) {
+                if (frame.getItem() != null) {
+                    items.add(new ItemStack(frame.getItem()));
+                }
+            }
+            for (InfusionRecipe r: infusionRecipes) {
+                if (r.matches(items)) {
+                    startInfusion(r);
+                    break;
+                }
+            }
+        }
+
+        private void startInfusion(InfusionRecipe r) {
+            for (ItemFrame frame: frames) {
+                frame.setItem(null);
+            }
+            for (ItemStack i: r.getOutput()) {
+                stand.getWorld().dropItem(stand.getLocation(), i);
+            }
+        }
+    }
 }
