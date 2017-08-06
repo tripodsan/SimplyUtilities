@@ -5,6 +5,9 @@ Pads
 ----
 todo
 
+Gifs
+------
+
 Lazers
 ------
 ![Lazer](doc/r_lazer.png)
