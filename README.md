@@ -7,6 +7,7 @@ todo
 
 Gifs
 ------
+![Lazer](doc/SimplyUtilitiesLogo.gif)
 
 Lazers
 ------
