@@ -31,11 +31,13 @@ import org.bukkit.SkullType;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
+import org.bukkit.block.Container;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.ArmorStand;
+import org.bukkit.entity.Item;
 import org.bukkit.entity.ItemFrame;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -43,6 +45,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.ShapelessRecipe;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -140,7 +143,7 @@ public class Infusion implements Listener, CommandExecutor {
         InfusionRecipe r = new InfusionRecipe();
         r.addIngredient(Material.WATER_BUCKET, 3);
         r.addIngredient(Material.SNOW_BALL, 1);
-        r.addOutput(Material.ICE, 1);
+        r.addOutput(Material.ICE, 3);
         r.addOutput(Material.BUCKET, 3);
         infusionRecipes.add(r);
     }
@@ -283,17 +286,17 @@ public class Infusion implements Listener, CommandExecutor {
         a.teleport(loc);
         a.setCustomName(key);
         a.setCustomNameVisible(true);
-        a.setVisible(true);
+        a.setVisible(false);
         a.setGravity(false);
         a.setMarker(true);
         a.setArms(true);
         a.setLeftArmPose(new EulerAngle(Math.toRadians(170), Math.toRadians(170), Math.toRadians(31)));
 
-        ItemStack head = new ItemStack(Material.SKULL_ITEM, 1, (short) SkullType.PLAYER.ordinal());
-        SkullMeta meta = (SkullMeta) head.getItemMeta();
-        meta.setOwner(player.getName());
-        head.setItemMeta(meta);
-        a.setHelmet(head);
+        //ItemStack head = new ItemStack(Material.SKULL_ITEM, 1, (short) SkullType.PLAYER.ordinal());
+        //SkullMeta meta = (SkullMeta) head.getItemMeta();
+        //meta.setOwner(player.getName());
+        //head.setItemMeta(meta);
+        // a.setHelmet(head);
 
         // play effect
         float red = 0f;
@@ -344,6 +347,44 @@ public class Infusion implements Listener, CommandExecutor {
         }
     }
 
+    private class ItemHolder {
+
+        private final ItemFrame frame;
+
+        private final Location containerLoc;
+
+        public ItemHolder(ItemFrame frame, Location containerLoc) {
+            this.frame = frame;
+            this.containerLoc = containerLoc;
+        }
+
+        boolean hasItem() {
+            return frame.getItem().getType() != Material.AIR;
+        }
+
+        public void update() {
+            if (!hasItem()) {
+                Block b = containerLoc.getBlock();
+                if (b.getState() instanceof Container) {
+                    Inventory inv = ((Container) b.getState()).getInventory();
+                    ItemStack[] contents = inv.getContents();
+                    if (contents.length > 0) {
+                        ItemStack stack = contents[0];
+                        int amount = stack.getAmount();
+                        if (amount > 0) {
+                            amount--;
+                            frame.setItem(new ItemStack(stack.getType(), 1));
+                            stack.setAmount(amount);
+                            inv.setContents(contents);
+                        }
+                    }
+                    plugin.getLogger().info("inventroy:" + inv.getContents());
+
+                }
+            }
+        }
+    }
+
     private class Altar {
 
         private final ArmorStand stand;
@@ -352,7 +393,7 @@ public class Infusion implements Listener, CommandExecutor {
 
         private final Vector center;
 
-        private final List<ItemFrame> frames = new ArrayList<>(4);
+        private final List<ItemHolder> frames = new ArrayList<>(4);
 
         public Altar(ArmorStand stand) {
             this.stand = stand;
@@ -370,8 +411,12 @@ public class Infusion implements Listener, CommandExecutor {
                 v.setZ(v.getBlockZ());
                 plugin.getLogger().info("distance is: " + v.distanceSquared(center));
                 if (v.distanceSquared(center) == 5) {
-                    plugin.getLogger().info("found item frame: " + i);
-                    frames.add(i);
+                    v.subtract(center.toBlockVector()).setY(0);
+                    v.multiply(2);
+                    Location l = new Location(stand.getWorld(), center.getX(), center.getY() + 1, center.getZ());
+                    l.add(v);
+                    // plugin.getLogger().info("found item frame: " + i + " at " + b);
+                    frames.add(new ItemHolder(i, l));
                 }
             }
         }
@@ -379,9 +424,10 @@ public class Infusion implements Listener, CommandExecutor {
         public void update() {
 
             List<ItemStack> items = new ArrayList<>(4);
-            for (ItemFrame frame: frames) {
-                if (frame.getItem() != null) {
-                    items.add(new ItemStack(frame.getItem()));
+            for (ItemHolder holder: frames) {
+                holder.update();
+                if (holder.hasItem()) {
+                    items.add(new ItemStack(holder.frame.getItem()));
                 }
             }
             for (InfusionRecipe r: infusionRecipes) {
@@ -393,11 +439,16 @@ public class Infusion implements Listener, CommandExecutor {
         }
 
         private void startInfusion(InfusionRecipe r) {
-            for (ItemFrame frame: frames) {
-                frame.setItem(null);
+            for (ItemHolder frame: frames) {
+                frame.frame.setItem(null);
             }
+            Location loc = stand.getLocation().clone().add(0, 0.5, 0);
             for (ItemStack i: r.getOutput()) {
-                stand.getWorld().dropItem(stand.getLocation(), i);
+                plugin.getLogger().info("location is: " + loc);
+                Item item = stand.getWorld().dropItem(loc, i);
+                item.setVelocity(new Vector());
+                // item.setGravity(false);
+                item.teleport(loc);
             }
         }
     }
