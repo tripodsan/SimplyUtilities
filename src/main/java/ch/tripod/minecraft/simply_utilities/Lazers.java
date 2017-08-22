@@ -121,6 +121,7 @@ public class Lazers implements Listener {
             return stack;
         }
     }
+
     private void createRecipes() {
         // create lazer recipe
         {
@@ -285,7 +286,7 @@ public class Lazers implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     public void onCraftColoredPrismEvent(PrepareItemCraftEvent event) {
-        plugin.getLogger().info("prepare: " + event);
+        // plugin.getLogger().info("prepare: " + event);
         ItemStack[] ss = event.getInventory().getMatrix();
         Color c = null;
         LazerPrism oldPrism = null;

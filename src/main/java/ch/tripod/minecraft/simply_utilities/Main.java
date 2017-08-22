@@ -17,8 +17,21 @@
 package ch.tripod.minecraft.simply_utilities;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.List;
 
+import org.bukkit.ChatColor;
+import org.bukkit.DyeColor;
+import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
+import org.bukkit.block.banner.Pattern;
+import org.bukkit.block.banner.PatternType;
 import org.bukkit.enchantments.Enchantment;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.ShapedRecipe;
+import org.bukkit.inventory.ShapelessRecipe;
+import org.bukkit.inventory.meta.BannerMeta;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 
 /**
@@ -44,6 +57,8 @@ public class Main extends JavaPlugin {
         infusion = new Infusion();
         infusion.enable(this);
 
+        createRecipes();
+
         this.getLogger().info("Simply Utilities plugin enabled.");
     }
 
@@ -65,5 +80,20 @@ public class Main extends JavaPlugin {
         this.getLogger().info("Simply Utilities plugin disabled.");
     }
 
+    private void createRecipes() {
+        {
+            ItemStack sticks = new ItemStack(Material.STICK, 16);
+            ShapelessRecipe recp = new ShapelessRecipe(new NamespacedKey(this, "sticks"), sticks);
+            recp.addIngredient(2, Material.LOG);
+            this.getServer().addRecipe(recp);
+            recp = new ShapelessRecipe(new NamespacedKey(this, "sticks1"), sticks);
+            recp.addIngredient(2, Material.LOG_2);
+            this.getServer().addRecipe(recp);
+            recp = new ShapelessRecipe(new NamespacedKey(this, "sticks2"), sticks);
+            recp.addIngredient(1, Material.LOG);
+            recp.addIngredient(1, Material.LOG_2);
+            this.getServer().addRecipe(recp);
+        }
+    }
 
 }

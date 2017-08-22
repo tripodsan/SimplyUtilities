@@ -24,10 +24,11 @@ import java.util.List;
 import java.util.Map;
 
 import org.bukkit.ChatColor;
+import org.bukkit.Color;
 import org.bukkit.Effect;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.SkullType;
+import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
@@ -47,9 +48,7 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.ShapelessRecipe;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.material.Directional;
 import org.bukkit.material.MaterialData;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -140,12 +139,22 @@ public class Infusion implements Listener, CommandExecutor {
 
     private List<InfusionRecipe> infusionRecipes = new LinkedList<>();
     private void initRecipies() {
-        InfusionRecipe r = new InfusionRecipe();
-        r.addIngredient(Material.WATER_BUCKET, 3);
-        r.addIngredient(Material.SNOW_BALL, 1);
-        r.addOutput(Material.ICE, 3);
-        r.addOutput(Material.BUCKET, 3);
-        infusionRecipes.add(r);
+        {
+            InfusionRecipe r = new InfusionRecipe();
+            r.addIngredient(Material.WATER_BUCKET, 3);
+            r.addIngredient(Material.SNOW_BALL, 1);
+            r.addOutput(Material.ICE, 3);
+            r.addOutput(Material.BUCKET, 3);
+            infusionRecipes.add(r);
+        }
+        {
+            InfusionRecipe r = new InfusionRecipe();
+            r.addIngredient(Material.ENDER_PEARL, 1);
+            r.addIngredient(Material.GLOWSTONE_DUST, 2);
+            r.addIngredient(Material.STONE, 1);
+            r.addOutput(Material.ENDER_STONE, 2);
+            infusionRecipes.add(r);
+        }
     }
 
     private BukkitTask task;
@@ -180,6 +189,9 @@ public class Infusion implements Listener, CommandExecutor {
                     }
                 }
             }
+
+            // update the photons
+            photons.removeIf(p -> !p.update());
         }
     }
 
@@ -362,24 +374,30 @@ public class Infusion implements Listener, CommandExecutor {
             return frame.getItem().getType() != Material.AIR;
         }
 
+        ItemStack removeItem() {
+            ItemStack item = frame.getItem();
+            frame.setItem(null);
+            return item;
+        }
+
         public void update() {
             if (!hasItem()) {
                 Block b = containerLoc.getBlock();
                 if (b.getState() instanceof Container) {
                     Inventory inv = ((Container) b.getState()).getInventory();
                     ItemStack[] contents = inv.getContents();
-                    if (contents.length > 0) {
-                        ItemStack stack = contents[0];
-                        int amount = stack.getAmount();
-                        if (amount > 0) {
-                            amount--;
-                            frame.setItem(new ItemStack(stack.getType(), 1));
-                            stack.setAmount(amount);
-                            inv.setContents(contents);
+                    for (ItemStack stack: contents) {
+                        if (stack != null) {
+                            int amount = stack.getAmount();
+                            if (amount > 0) {
+                                amount--;
+                                frame.setItem(new ItemStack(stack.getType(), 1));
+                                stack.setAmount(amount);
+                                inv.setContents(contents);
+                                break;
+                            }
                         }
                     }
-                    plugin.getLogger().info("inventroy:" + inv.getContents());
-
                 }
             }
         }
@@ -393,7 +411,13 @@ public class Infusion implements Listener, CommandExecutor {
 
         private final Vector center;
 
+        private final Vector rod;
+
         private final List<ItemHolder> frames = new ArrayList<>(4);
+
+        private InfusionRecipe infusing = null;
+
+        private int time = 0;
 
         public Altar(ArmorStand stand) {
             this.stand = stand;
@@ -401,6 +425,8 @@ public class Infusion implements Listener, CommandExecutor {
 
             // get item frames
             center = stand.getLocation().toVector();
+            rod = center.clone();
+            rod.add(new Vector(0, 2.5, 0));
             center.setX(center.getBlockX());
             center.setY(center.getBlockY());
             center.setZ(center.getBlockZ());
@@ -409,7 +435,7 @@ public class Infusion implements Listener, CommandExecutor {
                 v.setX(v.getBlockX());
                 v.setY(v.getBlockY());
                 v.setZ(v.getBlockZ());
-                plugin.getLogger().info("distance is: " + v.distanceSquared(center));
+                // plugin.getLogger().info("distance is: " + v.distanceSquared(center));
                 if (v.distanceSquared(center) == 5) {
                     v.subtract(center.toBlockVector()).setY(0);
                     v.multiply(2);
@@ -423,33 +449,115 @@ public class Infusion implements Listener, CommandExecutor {
 
         public void update() {
 
-            List<ItemStack> items = new ArrayList<>(4);
-            for (ItemHolder holder: frames) {
-                holder.update();
-                if (holder.hasItem()) {
-                    items.add(new ItemStack(holder.frame.getItem()));
+            if (infusing != null) {
+                animateItems();
+            } else {
+                List<ItemStack> items = new ArrayList<>(4);
+                for (ItemHolder holder: frames) {
+                    holder.update();
+                    if (holder.hasItem()) {
+                        items.add(new ItemStack(holder.frame.getItem()));
+                    }
                 }
-            }
-            for (InfusionRecipe r: infusionRecipes) {
-                if (r.matches(items)) {
-                    startInfusion(r);
-                    break;
+
+                for (InfusionRecipe r: infusionRecipes) {
+                    if (r.matches(items)) {
+                        startInfusion(r);
+                        break;
+                    }
                 }
             }
         }
 
-        private void startInfusion(InfusionRecipe r) {
+        private void endInfusion() {
             for (ItemHolder frame: frames) {
-                frame.frame.setItem(null);
+                frame.removeItem();
             }
+
             Location loc = stand.getLocation().clone().add(0, 0.5, 0);
-            for (ItemStack i: r.getOutput()) {
+            for (ItemStack i: infusing.getOutput()) {
                 plugin.getLogger().info("location is: " + loc);
                 Item item = stand.getWorld().dropItem(loc, i);
                 item.setVelocity(new Vector());
-                // item.setGravity(false);
                 item.teleport(loc);
             }
+            infusing = null;
+        }
+
+        private void startInfusion(InfusionRecipe r) {
+            infusing = r;
+            time = 0;
+            plugin.getLogger().info("start infusion of: " + r);
+            animateItems();
+            stand.getWorld().playSound(stand.getLocation(), Sound.ENTITY_ZOMBIE_VILLAGER_CONVERTED, 10, 1);
+        }
+
+        private void animateItems() {
+            if (time < 10) {
+                for (ItemHolder frame: frames) {
+                    Vector s0 = frame.frame.getLocation().toVector();
+                    Vector d  = rod.clone().subtract(s0);
+                    d.multiply(0.1);
+                    Location l = frame.frame.getLocation();
+                    photons.add(new Photon(l, d, Color.YELLOW, rod));
+                }
+            }
+            if (time > 25) {
+                endInfusion();
+            }
+            time++;
         }
     }
+
+    private List<Photon> photons = new ArrayList<>(10000);
+
+    private class Photon implements Comparable<Photon> {
+
+        private float[] color;
+
+        private Location l;
+
+        private Vector v;
+
+        private Vector rod;
+
+        private int age;
+
+        public Photon(Location l, Vector v, float[] color, Vector rod) {
+            this.l = l;
+            this.v = v;
+            this.color = color;
+            this.rod = rod;
+        }
+
+        public Photon(Location l, Vector v, Color color, Vector rod) {
+            this(l, v, new float[]{
+                    ((float) color.getRed() / 255) - 1.0f,
+                    (float) color.getGreen() / 255,
+                    (float) color.getBlue() / 255}, rod);
+        }
+
+        /**
+         * updates the photon.
+         * @return {@code false} if the photon is no longer valid
+         */
+        boolean update() {
+            l.add(v);
+            if (l.toVector().distanceSquared(rod) < 0.05) {
+                v = new Vector(0, -0.1, 0);
+            }
+            paint();
+            return age++ <= 30;
+        }
+
+        private void paint() {
+            l.getWorld().spigot().playEffect(l, Effect.COLOURED_DUST, 0, 1, color[0], color[1], color[2], 1, 0, 64);
+        }
+
+        @Override
+        public int compareTo(Photon o) {
+            return Integer.compare(age, o.age);
+        }
+    }
+
 }
