@@ -39,6 +39,7 @@ public class StructureVerifier {
 
     private static final int MAX_STRUCTURE_SIZE = 32*32*32;
 
+    private final String name;
 
     private int dx;
 
@@ -47,6 +48,11 @@ public class StructureVerifier {
     private int dz;
 
     private BlockCondition[] filter;
+
+
+    public StructureVerifier(String name) {
+        this.name = name;
+    }
 
     public StructureVerifier load(String json) {
         JsonParser p = new JsonParser();
@@ -115,9 +121,9 @@ public class StructureVerifier {
         }
     }
 
-    public boolean verify(Player p, Location loc) {
+    public boolean verify(Player p, Location loc, int sy) {
         int x0 = loc.getBlockX() - dx / 2;
-        int y0 = loc.getBlockY() - 1;
+        int y0 = loc.getBlockY() - sy;
         int z0 = loc.getBlockZ() - dz / 2;
         int i = 0;
         for (int y = y0; y <= y0 + dy; y++) {
@@ -125,13 +131,13 @@ public class StructureVerifier {
                 for (int z = z0; z <= z0 + dz; z++) {
                     Location l = new Location(loc.getWorld(), x, y, z);
                     if (!filter[i++].matches(l.getBlock())) {
-                        p.sendMessage("Structure not valid.");
+                        p.sendMessage(name + " structure not valid at " + l.getBlock() + " should be " + filter[i-1].toJson());
                         return false;
                     }
                 }
             }
         }
-        p.sendMessage("hooray. structure complete");
+        p.sendMessage("Hooray. structure complete: " + name);
         return true;
     }
 

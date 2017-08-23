@@ -16,22 +16,10 @@
  */
 package ch.tripod.minecraft.simply_utilities;
 
-import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.List;
-
-import org.bukkit.ChatColor;
-import org.bukkit.DyeColor;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
-import org.bukkit.block.banner.Pattern;
-import org.bukkit.block.banner.PatternType;
-import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.inventory.ShapelessRecipe;
-import org.bukkit.inventory.meta.BannerMeta;
-import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 
 /**
@@ -45,6 +33,8 @@ public class Main extends JavaPlugin {
 
     private Infusion infusion;
 
+    private Alchemy alchemy;
+
     @Override
     public void onEnable() {
         super.onEnable();
@@ -56,6 +46,9 @@ public class Main extends JavaPlugin {
 
         infusion = new Infusion();
         infusion.enable(this);
+
+        alchemy = new Alchemy();
+        alchemy.enable(this);
 
         createRecipes();
 
@@ -76,6 +69,10 @@ public class Main extends JavaPlugin {
         if (infusion != null) {
             infusion.disable();
             infusion = null;
+        }
+        if (alchemy != null) {
+            alchemy.disable();
+            alchemy = null;
         }
         this.getLogger().info("Simply Utilities plugin disabled.");
     }

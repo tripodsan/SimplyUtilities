@@ -78,7 +78,7 @@ public class Infusion implements Listener, CommandExecutor {
 
     private JavaPlugin plugin;
 
-    private StructureVerifier verifier = new StructureVerifier().load(
+    private StructureVerifier verifier = new StructureVerifier("infusion").load(
             "{\"dx\":6,\"dy\":6,\"dz\":6,\"matrix\":\".aaaaa.abcccbaacdadcaacaeacaacdadcaabcccba.aaaaa....f.................f..g..f.................f......h.................h.....h.................h......f.................f..i..f.................f......j......j..........jj.k.jj..........j......j.............l...........l.k.l...........l....................l......l....lllll....l......l..........\",\"map\":{\"k\":{\"mat\":\"STAINED_GLASS_PANE\"},\"d\":{\"mat\":\"BLACK_GLAZED_TERRACOTTA\"},\"j\":{\"mat\":\"NETHER_BRICK_STAIRS\"},\"l\":{\"mat\":\"STAINED_GLASS\"},\"a\":{\"mat\":\"RED_NETHER_BRICK\"},\"i\":{\"mat\":\"END_ROD\"},\"h\":{\"mat\":\"CONCRETE\"},\"g\":{\"mat\":\"CAULDRON\"},\"f\":{\"mat\":\"NETHER_BRICK\"},\".\":{\"mat\":\"AIR\"},\"e\":{\"mat\":\"BARRIER\"},\"b\":{\"mat\":\"REDSTONE_BLOCK\"},\"c\":{\"mat\":\"CONCRETE_POWDER\"}}}");
 
     private HashMap<String, Altar> altars = new HashMap<>();
@@ -263,7 +263,7 @@ public class Infusion implements Listener, CommandExecutor {
     public void onBlockPlace(BlockPlaceEvent event){
 
         if(event.getBlock().getType() == Material.CAULDRON) {
-            if (verifier.verify(event.getPlayer(), event.getBlock().getLocation())) {
+            if (verifier.verify(event.getPlayer(), event.getBlock().getLocation(), 1)) {
                 createAltar(event.getPlayer(), event.getBlock().getLocation(), event.getBlock().getState().getData());
             }
         }
@@ -489,7 +489,7 @@ public class Infusion implements Listener, CommandExecutor {
             time = 0;
             plugin.getLogger().info("start infusion of: " + r);
             animateItems();
-            stand.getWorld().playSound(stand.getLocation(), Sound.ENTITY_ZOMBIE_VILLAGER_CONVERTED, 10, 1);
+            stand.getWorld().playSound(stand.getLocation(), Sound.ENTITY_ZOMBIE_VILLAGER_CONVERTED, 1, 1);
         }
 
         private void animateItems() {
