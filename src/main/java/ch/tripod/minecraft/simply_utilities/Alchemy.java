@@ -118,9 +118,9 @@ public class Alchemy implements Listener {
         {
             AlchemyRecipe r = new AlchemyRecipe()
                     .addSource(Material.COAL_ORE, -1)
-                    .addOutput(Material.STONE, 0, 0.3)
-                    .addOutput(Material.COAL_BLOCK, 0.3, 0.6)
-                    .addOutput(Material.LAPIS_BLOCK, 0.6, 1);
+                    .addOutput(Material.STONE, 0, 0.4)
+                    .addOutput(Material.COAL_BLOCK, 0.4, 0.7)
+                    .addOutput(Material.LAPIS_BLOCK, 0.7, 1);
             recipes.add(r);
         }
     }
