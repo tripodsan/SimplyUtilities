@@ -35,6 +35,8 @@ public class Main extends JavaPlugin {
 
     private Alchemy alchemy;
 
+    private BlastFurnace furnce;
+
     @Override
     public void onEnable() {
         super.onEnable();
@@ -49,6 +51,9 @@ public class Main extends JavaPlugin {
 
         alchemy = new Alchemy();
         alchemy.enable(this);
+
+        furnce = new BlastFurnace();
+        furnce.enable(this);
 
         createRecipes();
 
@@ -73,6 +78,10 @@ public class Main extends JavaPlugin {
         if (alchemy != null) {
             alchemy.disable();
             alchemy = null;
+        }
+        if (furnce != null) {
+            furnce.disable();
+            furnce = null;
         }
         this.getLogger().info("Simply Utilities plugin disabled.");
     }

@@ -438,6 +438,13 @@ public class Lazers implements Listener {
 
                     // reflect direction V' = -2*(V dot N)*N + V
                     v.add(n.multiply(-2 * v.dot(n)));
+
+                    // snap to 45 degs
+                    double a = Math.toDegrees(v.angle(new Vector(1, 0, 0)));
+                    a = Math.toRadians(Math.round(a / 45) * 45);
+                    double s = v.length();
+                    v = new Vector(Math.cos(a) * s, 0, Math.sin(a) * s);
+
                     l.setX(b.getX() + 0.5);
                     l.setY(b.getY() + 0.5);
                     l.setZ(b.getZ() + 0.5);

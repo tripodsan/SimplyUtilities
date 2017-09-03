@@ -16,11 +16,14 @@
  */
 package ch.tripod.minecraft.simply_utilities;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
+import org.bukkit.Color;
 import org.bukkit.Effect;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -29,13 +32,11 @@ import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.ArmorStand;
-import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
-import org.bukkit.inventory.ItemStack;
 import org.bukkit.material.Directional;
 import org.bukkit.material.MaterialData;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -52,6 +53,32 @@ public class Alchemy implements Listener {
         private Location l1;
     }
 
+    private static Map<String, Material> matmap = new HashMap<>();
+    static {
+        matmap.put("c", Material.COAL_ORE);
+        matmap.put("l", Material.LAPIS_ORE);
+        matmap.put("i", Material.IRON_ORE);
+        matmap.put("g", Material.GOLD_ORE);
+        matmap.put("d", Material.DIAMOND_ORE);
+        matmap.put("e", Material.EMERALD_ORE);
+        matmap.put("r", Material.REDSTONE_ORE);
+        matmap.put("n", Material.QUARTZ_ORE);
+        matmap.put("w", Material.GLOWSTONE);
+
+        matmap.put("C", Material.COAL_BLOCK);
+        matmap.put("L", Material.LAPIS_BLOCK);
+        matmap.put("I", Material.IRON_BLOCK);
+        matmap.put("G", Material.GOLD_BLOCK);
+        matmap.put("D", Material.DIAMOND_BLOCK);
+        matmap.put("E", Material.EMERALD_BLOCK);
+        matmap.put("R", Material.REDSTONE_BLOCK);
+        matmap.put("Q", Material.QUARTZ_BLOCK);
+        matmap.put("N", Material.NETHERRACK);
+        matmap.put("S", Material.STONE);
+        matmap.put("A", Material.SEA_LANTERN);
+        matmap.put("V", Material.GRAVEL);
+    }
+
     private final static String STRUCTURE_PREFIX = "alchemy-";
 
     private Map<String, Corners> corners = new HashMap<>();
@@ -63,7 +90,10 @@ public class Alchemy implements Listener {
 
     private HashMap<String, Altar> altars = new HashMap<>();
 
+    private Random rand = new Random();
+
     private class AlchemyRecipe  {
+
 
         private class Drop {
 
@@ -88,7 +118,8 @@ public class Alchemy implements Listener {
         private int data;
 
         public Material getOutput() {
-            double r = Math.random();
+            double r = rand.nextDouble();
+
             for (Drop d: output) {
                 if (r >= d.min && r < d.max) {
                     return d.output;
@@ -102,9 +133,24 @@ public class Alchemy implements Listener {
             return this;
         }
 
+        private AlchemyRecipe addOutputs(String mats, double ... weights) {
+            double prev = 0;
+            for (int i=0; i<mats.length(); i++) {
+                addOutput(matmap.get(mats.substring(i, i+1)), prev, weights[i]);
+                prev = weights[i];
+            }
+            return this;
+        }
+
         private AlchemyRecipe addSource(Material mat, int data) {
             this.mat = mat;
             this.data = data;
+            return this;
+        }
+
+        private AlchemyRecipe addSource(String matCode) {
+            this.mat = matmap.get(matCode);
+            this.data = -1;
             return this;
         }
 
@@ -115,14 +161,21 @@ public class Alchemy implements Listener {
 
     private List<AlchemyRecipe> recipes = new LinkedList<>();
     private void initRecipes() {
-        {
-            AlchemyRecipe r = new AlchemyRecipe()
-                    .addSource(Material.COAL_ORE, -1)
-                    .addOutput(Material.STONE, 0, 0.4)
-                    .addOutput(Material.COAL_BLOCK, 0.4, 0.7)
-                    .addOutput(Material.LAPIS_BLOCK, 0.7, 1);
-            recipes.add(r);
-        }
+        recipes.add(new AlchemyRecipe().addSource("c").addOutputs("SCL", 0.2, 0.6, 1));
+        recipes.add(new AlchemyRecipe().addSource("l").addOutputs("SLI", 0.2, 0.6, 1));
+        recipes.add(new AlchemyRecipe().addSource("i").addOutputs("SIG", 0.2, 0.6, 1));
+        recipes.add(new AlchemyRecipe().addSource("g").addOutputs("SGD", 0.2, 0.6, 1));
+        recipes.add(new AlchemyRecipe().addSource("d").addOutputs("SDE", 0.2, 0.6, 1));
+        recipes.add(new AlchemyRecipe().addSource("e").addOutputs("SE", 0.4, 1));
+        recipes.add(new AlchemyRecipe().addSource("r").addOutputs("SR", 0.4, 1));
+        recipes.add(new AlchemyRecipe().addSource("n").addOutputs("NQ", 0.4, 1));
+        recipes.add(new AlchemyRecipe().addSource("w").addOutputs("VA", 0.4, 1));
+        recipes.add(new AlchemyRecipe().addSource(Material.SAND, 1)
+                .addOutput(Material.SAND, 0, 0.4)
+                .addOutput(Material.SOUL_SAND, 0.4, 1.0));
+        recipes.add(new AlchemyRecipe().addSource(Material.CONCRETE_POWDER, 9)
+                .addOutput(Material.SAND, 0, 0.4)
+                .addOutput(Material.PRISMARINE, 0.4, 1.0));
     }
 
     private BukkitTask task;
@@ -155,6 +208,8 @@ public class Alchemy implements Listener {
                 }
             }
 
+            // update the photons
+            photons.removeIf(p -> !p.update());
         }
     }
 
@@ -201,7 +256,7 @@ public class Alchemy implements Listener {
         a.teleport(loc);
         a.setCustomName(key);
         a.setCustomNameVisible(true);
-        a.setVisible(true);
+        a.setVisible(false);
         a.setGravity(false);
         a.setMarker(true);
 
@@ -264,7 +319,9 @@ public class Alchemy implements Listener {
 
         private int time;
 
-        private Block currentBlock;
+        private Material curMaterial;
+
+        private byte curData;
 
         private AlchemyRecipe recipe;
 
@@ -278,22 +335,34 @@ public class Alchemy implements Listener {
 
         public void update() {
             Block cb = center.getBlock();
-            if (currentBlock != null && cb.equals(currentBlock)) {
+            if (recipe != null && cb.getType() == curMaterial && cb.getData() == curData) {
+
+                double t = ((double) time)*1.5;
+                double r = 1.15;
+                double dx = Math.cos(t / Math.PI) * r;
+                double dz = Math.sin(t / Math.PI) * r;
+                Location l = center.clone();
+                Vector v = new Vector(0, 0.1, 0);
+                l.add(dx, 0, dz);
+                photons.add(new Photon(l, v, Color.LIME));
+
                 if (++time > 50) {
                     Material mat = recipe.getOutput();
                     plugin.getLogger().info("stop alchemy. creating " + mat);
                     cb.setType(mat);
-                    currentBlock = null;
                     stand.getWorld().playSound(stand.getLocation(), Sound.ITEM_FIRECHARGE_USE, 1, 1);
+                    recipe = null;
                 }
             } else {
-                currentBlock = null;
+                recipe = null;
                 for (AlchemyRecipe r: recipes) {
                     if (r.matches(cb)) {
                         recipe = r;
-                        currentBlock = cb;
+                        curMaterial = cb.getType();
+                        curData = cb.getData();
                         time = 0;
-                        plugin.getLogger().info("start alchemy with " + currentBlock);
+                        plugin.getLogger().info("start alchemy with " + cb);
+                        return;
                     }
                 }
             }
@@ -301,5 +370,49 @@ public class Alchemy implements Listener {
 
     }
 
+    private List<Photon> photons = new ArrayList<>(10000);
 
+    private class Photon implements Comparable<Photon> {
+
+        private float[] color;
+
+        private Location l;
+
+        private Vector v;
+
+        private int age;
+
+        public Photon(Location l, Vector v, float[] color) {
+            this.l = l;
+            this.v = v;
+            this.color = color;
+        }
+
+        public Photon(Location l, Vector v, Color color) {
+            this(l, v, new float[]{
+                    ((float) color.getRed() / 255) - 1.0f,
+                    (float) color.getGreen() / 255,
+                    (float) color.getBlue() / 255});
+        }
+
+        /**
+         * updates the photon.
+         *
+         * @return {@code false} if the photon is no longer valid
+         */
+        boolean update() {
+            l.add(v);
+            paint();
+            return age++ <= 20;
+        }
+
+        private void paint() {
+            l.getWorld().spigot().playEffect(l, Effect.COLOURED_DUST, 0, 1, color[0], color[1], color[2], 1, 0, 64);
+        }
+
+        @Override
+        public int compareTo(Photon o) {
+            return Integer.compare(age, o.age);
+        }
+    }
 }
