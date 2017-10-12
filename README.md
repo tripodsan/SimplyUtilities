@@ -1,5 +1,6 @@
 Simply Utilities
 ================
+The ultimate plugin.
 
 Pads
 ----
