@@ -98,11 +98,11 @@ public class StructureVerifier {
             return obj;
         }
 
-        private boolean matches(Block block) {
+        private boolean matches(Material blockMaterial) {
             if (mat == Material.AIR || mat == Material.BARRIER) {
                 return true;
             }
-            return mat == block.getType();
+            return mat == blockMaterial;
         }
 
         @Override
@@ -122,6 +122,10 @@ public class StructureVerifier {
     }
 
     public boolean verify(Player p, Location loc, int sy) {
+        return verify(p, loc, sy, null);
+    }
+
+    public boolean verify(Player p, Location loc, int sy, Location forcedAirLocation) {
         int x0 = loc.getBlockX() - dx / 2;
         int y0 = loc.getBlockY() - sy;
         int z0 = loc.getBlockZ() - dz / 2;
@@ -130,14 +134,22 @@ public class StructureVerifier {
             for (int x = x0; x <= x0 + dx; x++) {
                 for (int z = z0; z <= z0 + dz; z++) {
                     Location l = new Location(loc.getWorld(), x, y, z);
-                    if (!filter[i++].matches(l.getBlock())) {
-                        p.sendMessage(name + " structure not valid at " + l.getBlock() + " should be " + filter[i-1].toJson());
+                    Material mat = l.getBlock().getType();
+                    if (forcedAirLocation != null && l.equals(forcedAirLocation)) {
+                        mat = Material.AIR;
+                    }
+                    if (!filter[i++].matches(mat)) {
+                        if (p != null) {
+                            p.sendMessage(name + " structure not valid at " + l.getBlock() + " should be " + filter[i-1].toJson());
+                        }
                         return false;
                     }
                 }
             }
         }
-        p.sendMessage("Hooray. structure complete: " + name);
+        if (p != null) {
+            p.sendMessage("Hooray. structure complete: " + name);
+        }
         return true;
     }
 

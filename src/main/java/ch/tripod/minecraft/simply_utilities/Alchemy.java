@@ -36,6 +36,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockDamageEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.material.Directional;
 import org.bukkit.material.MaterialData;
@@ -230,11 +231,16 @@ public class Alchemy implements Listener {
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event) {
         Player player = event.getPlayer();
-        if(event.getBlock().getType() == Material.CAULDRON) {
-            // todo: recheck structure
-            String key = getKey(event.getBlock().getLocation());
-            if (removeAltar(event.getBlock().getWorld(), key)) {
-                player.sendMessage("you broke " + key);
+        for (World w : plugin.getServer().getWorlds()) {
+            for (ArmorStand a : w.getEntitiesByClass(ArmorStand.class)) {
+                Altar l = getAltar(a);
+                Location loc = event.getBlock().getLocation();
+                if (l != null && l.isInside(loc)) {
+                    if (!l.isValid(loc)) {
+                        removeAltar(l);
+                        player.sendMessage("you broke " + l.key);
+                    }
+                }
             }
         }
     }
@@ -273,11 +279,10 @@ public class Alchemy implements Listener {
         return getAltar(a);
     }
 
-    private boolean removeAltar(World world, String key) {
-        Altar a = getAltar(world, key);
+    private boolean removeAltar(Altar a) {
         if (a != null) {
             a.stand.remove();
-            altars.remove(key);
+            altars.remove(a.key);
             return true;
         }
         return false;
@@ -325,12 +330,27 @@ public class Alchemy implements Listener {
 
         private AlchemyRecipe recipe;
 
+        private Vector boxMin;
+        private Vector boxMax;
+
         public Altar(ArmorStand stand) {
             this.stand = stand;
             this.key = getKey(stand.getLocation());
 
             // get item frames
             center = stand.getLocation().add(0, 1, 0);
+            Vector d1 = new Vector(3, 3, 3);
+            Vector d2 = new Vector(2, 1, 2);
+            boxMin = center.toVector().subtract(d1);
+            boxMax = center.toVector().add(d2);
+        }
+
+        public boolean isInside(Location loc) {
+            return loc.toVector().isInAABB(boxMin, boxMax);
+        }
+
+        public boolean isValid(Location forcedAirLocation) {
+            return verifier.verify(null, center, 3, forcedAirLocation);
         }
 
         public void update() {
