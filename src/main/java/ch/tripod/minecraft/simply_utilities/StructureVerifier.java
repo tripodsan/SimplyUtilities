@@ -80,12 +80,15 @@ public class StructureVerifier {
 
         private Material mat;
 
+        private byte data;
+
         public BlockCondition(Material mat) {
             this.mat = mat;
         }
 
         public BlockCondition(Block block) {
             this.mat = block.getType();
+            this.data = block.getData();
         }
 
         public BlockCondition(JsonObject value) {
@@ -95,6 +98,7 @@ public class StructureVerifier {
         public JsonObject toJson() {
             JsonObject obj = new JsonObject();
             obj.add("mat", new JsonPrimitive(mat.name()));
+            obj.add("dat", new JsonPrimitive(data));
             return obj;
         }
 
@@ -159,6 +163,24 @@ public class StructureVerifier {
         v[1] = t;
     }
 
+    public void build(Location loc) {
+        int x0 = loc.getBlockX();
+        int y0 = loc.getBlockY();
+        int z0 = loc.getBlockZ();
+        int i = 0;
+        for (int y = y0; y <= y0 + dy; y++) {
+            for (int x = x0; x <= x0 + dx; x++) {
+                for (int z = z0; z <= z0 + dz; z++) {
+                    Location l = new Location(loc.getWorld(), x, y, z);
+                    BlockCondition f = filter[i++];
+                    l.getBlock().setType(f.mat);
+                    if (f.data > 0) {
+                        l.getBlock().setData(f.data);
+                    }
+                }
+            }
+        }
+    }
 
     public static String scan(Player p, Location l0, Location l1) {
         p.sendMessage("scanning blocks....");
