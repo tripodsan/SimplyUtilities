@@ -76,7 +76,7 @@ public class Infusion implements Listener, CommandExecutor {
 
     private Map<String, Corners> corners = new HashMap<>();
 
-    private JavaPlugin plugin;
+    private Main plugin;
 
     private StructureVerifier verifier = new StructureVerifier("infusion").load(
             "{\"dx\":6,\"dy\":6,\"dz\":6,\"matrix\":\".aaaaa.abcccbaacdadcaacaeacaacdadcaabcccba.aaaaa....f.................f..g..f.................f......h.................h.....h.................h......f.................f..i..f.................f......j......j..........jj.k.jj..........j......j.............l...........l.k.l...........l....................l......l....lllll....l......l..........\",\"map\":{\"k\":{\"mat\":\"STAINED_GLASS_PANE\"},\"d\":{\"mat\":\"BLACK_GLAZED_TERRACOTTA\"},\"j\":{\"mat\":\"NETHER_BRICK_STAIRS\"},\"l\":{\"mat\":\"STAINED_GLASS\"},\"a\":{\"mat\":\"RED_NETHER_BRICK\"},\"i\":{\"mat\":\"END_ROD\"},\"h\":{\"mat\":\"CONCRETE\"},\"g\":{\"mat\":\"CAULDRON\"},\"f\":{\"mat\":\"NETHER_BRICK\"},\".\":{\"mat\":\"AIR\"},\"e\":{\"mat\":\"BARRIER\"},\"b\":{\"mat\":\"REDSTONE_BLOCK\"},\"c\":{\"mat\":\"CONCRETE_POWDER\"}}}");
@@ -159,7 +159,7 @@ public class Infusion implements Listener, CommandExecutor {
 
     private BukkitTask task;
 
-    void enable(JavaPlugin plugin) {
+    void enable(Main plugin) {
         this.plugin = plugin;
         initRecipies();
         //task = plugin.getServer().getScheduler().runTaskTimer(plugin, new ScanForPads(), 1L, 1L);
@@ -226,6 +226,9 @@ public class Infusion implements Listener, CommandExecutor {
                 plugin.getLogger().info(json);
                 p.sendMessage("scanned structure:");
                 p.sendMessage(json);
+            }
+            else if (args.length > 0 && "reset_Chunks".equals(args[0])) {
+                plugin.onResetChunks(p);
             }
             else {
                 sender.sendMessage("usage: /simply wand");
@@ -352,7 +355,7 @@ public class Infusion implements Listener, CommandExecutor {
 
     private Altar getAltar(ArmorStand a) {
         String key = a.getCustomName();
-        if (key.startsWith("altar-")) {
+        if (key!=null && key.startsWith("altar-")) {
             return altars.computeIfAbsent(key, k -> new Altar(a));
         } else {
             return null;

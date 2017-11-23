@@ -177,7 +177,7 @@ public class BlastFurnace implements Listener {
 
     private Structure getStructure(ArmorStand a) {
         String key = a.getCustomName();
-        if (key.startsWith(STRUCTURE_PREFIX)) {
+        if (key!=null && key.startsWith(STRUCTURE_PREFIX)) {
             return structures.computeIfAbsent(key, k -> new Structure(a));
         } else {
             return null;

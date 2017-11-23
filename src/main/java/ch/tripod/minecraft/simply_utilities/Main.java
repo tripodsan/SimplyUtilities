@@ -18,6 +18,7 @@ package ch.tripod.minecraft.simply_utilities;
 
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.ShapelessRecipe;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -37,6 +38,8 @@ public class Main extends JavaPlugin {
 
     private BlastFurnace furnce;
 
+    private WorldGen gen;
+
     @Override
     public void onEnable() {
         super.onEnable();
@@ -55,9 +58,14 @@ public class Main extends JavaPlugin {
         furnce = new BlastFurnace();
         furnce.enable(this);
 
+        gen = new WorldGen();
+        gen.enable(this);
+
         createRecipes();
 
+
         this.getLogger().info("Simply Utilities plugin enabled.");
+        this.getLogger().info("I'm in the system now! WHEEEEEEEEEEEEEEE!");
     }
 
     @Override
@@ -83,6 +91,10 @@ public class Main extends JavaPlugin {
             furnce.disable();
             furnce = null;
         }
+        if (gen != null) {
+            gen.disable();
+            gen = null;
+        }
         this.getLogger().info("Simply Utilities plugin disabled.");
     }
 
@@ -100,6 +112,10 @@ public class Main extends JavaPlugin {
             recp.addIngredient(1, Material.LOG_2);
             this.getServer().addRecipe(recp);
         }
+    }
+
+    void onResetChunks(Player p) {
+        gen.resetChunks(p);
     }
 
 }

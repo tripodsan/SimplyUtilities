@@ -307,7 +307,7 @@ public class Alchemy implements Listener {
 
     private Altar getAltar(ArmorStand a) {
         String key = a.getCustomName();
-        if (key.startsWith(STRUCTURE_PREFIX)) {
+        if (key!=null && key.startsWith(STRUCTURE_PREFIX)) {
             return altars.computeIfAbsent(key, k -> new Altar(a));
         } else {
             return null;

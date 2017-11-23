@@ -387,7 +387,7 @@ public class Lazers implements Listener {
 
     private Lazer getLazer(ArmorStand a) {
         String key = a.getCustomName();
-        if (key.startsWith("lazer-")) {
+        if (key!=null && key.startsWith("lazer-")) {
             return lazers.computeIfAbsent(key, k -> new Lazer(a));
         } else {
             return null;
