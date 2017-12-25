@@ -21,48 +21,34 @@ import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.ShapelessRecipe;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * {@code Main}...
  */
 public class Main extends JavaPlugin {
 
-    private Lazers lazers;
-
-    private Pads pads;
-
-    private Infusion infusion;
-
-    private Alchemy alchemy;
-
-    private BlastFurnace furnce;
-
     private WorldGen gen;
+
+    private List<PluginUtility> utils = new LinkedList<>();
 
     @Override
     public void onEnable() {
         super.onEnable();
-        lazers = new Lazers();
-        lazers.enable(this);
-
-        pads = new Pads();
-        pads.enable(this);
-
-        infusion = new Infusion();
-        infusion.enable(this);
-
-        alchemy = new Alchemy();
-        alchemy.enable(this);
-
-        furnce = new BlastFurnace();
-        furnce.enable(this);
-
-        gen = new WorldGen();
-        gen.enable(this);
+        addUtil(new Lazers());
+        addUtil(new Pads());
+        addUtil(new Infusion());
+        addUtil(new Alchemy());
+        addUtil(new BlastFurnace());
+        addUtil(gen = new WorldGen());
+        addUtil(new Placers());
+        addUtil(new Breakers());
 
         createRecipes();
-
 
         this.getLogger().info("Simply Utilities plugin enabled.");
         this.getLogger().info("I'm in the system now! WHEEEEEEEEEEEEEEE!");
@@ -71,31 +57,16 @@ public class Main extends JavaPlugin {
     @Override
     public void onDisable() {
         super.onDisable();
-        if (lazers != null) {
-            lazers.disable();
-            lazers = null;
+        for (PluginUtility util: utils) {
+            util.disable();
         }
-        if (pads != null) {
-            pads.disable();
-            pads = null;
-        }
-        if (infusion != null) {
-            infusion.disable();
-            infusion = null;
-        }
-        if (alchemy != null) {
-            alchemy.disable();
-            alchemy = null;
-        }
-        if (furnce != null) {
-            furnce.disable();
-            furnce = null;
-        }
-        if (gen != null) {
-            gen.disable();
-            gen = null;
-        }
+        utils.clear();
         this.getLogger().info("Simply Utilities plugin disabled.");
+    }
+
+    private void addUtil(PluginUtility util) {
+        util.enable(this);
+        utils.add(util);
     }
 
     private void createRecipes() {

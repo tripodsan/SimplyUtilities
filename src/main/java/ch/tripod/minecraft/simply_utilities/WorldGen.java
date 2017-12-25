@@ -29,19 +29,22 @@ import org.bukkit.scheduler.BukkitTask;
 /**
  * {@code Main}...
  */
-public class WorldGen implements Listener {
+public class WorldGen implements Listener, PluginUtility {
 
+    private static String TUSSOCK = "{\"dx\":2,\"dy\":3,\"dz\":2,\"matrix\":\".a.aba.a..c.cac.c..d.dcd.d.....d....\",\"map\":{\"d\":{\"mat\":\"DOUBLE_PLANT\",\"dat\":10},\"a\":{\"mat\":\"DIRT\",\"dat\":2},\"c\":{\"mat\":\"DOUBLE_PLANT\",\"dat\":2},\"b\":{\"mat\":\"CHEST\",\"dat\":3},\".\":{\"mat\":\"AIR\",\"dat\":0}}}";
     private BukkitTask task;
 
     private JavaPlugin plugin;
 
-    void enable(JavaPlugin plugin) {
+    private StructureVerifier tussock = new StructureVerifier("tussock").load(TUSSOCK);
+
+    public void enable(JavaPlugin plugin) {
         this.plugin = plugin;
         plugin.getLogger().info("WorldGen enabled");
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
     }
 
-    void disable() {
+    public void disable() {
         if (task != null) {
             task.cancel();
             task = null;
@@ -75,6 +78,8 @@ public class WorldGen implements Listener {
             a.setGravity(false);
             a.setMarker(true);
             plugin.getLogger().info("Created Chunk Marker For " + loc);
+
+            tussock.build(loc);
         }
 
     }

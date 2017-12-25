@@ -62,7 +62,7 @@ import static org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK;
 /**
  * {@code Main}...
  */
-public class Infusion implements Listener, CommandExecutor {
+public class Infusion implements Listener, CommandExecutor, PluginUtility {
 
     private static final String WAND_NAME = ChatColor.DARK_GREEN + "Simply Wand";
     private static final List<String> WAND_LORE = Collections.singletonList(ChatColor.WHITE + "Left/right click to set corners.");
@@ -159,8 +159,8 @@ public class Infusion implements Listener, CommandExecutor {
 
     private BukkitTask task;
 
-    void enable(Main plugin) {
-        this.plugin = plugin;
+    public void enable(JavaPlugin plugin) {
+        this.plugin = (Main) plugin;
         initRecipies();
         //task = plugin.getServer().getScheduler().runTaskTimer(plugin, new ScanForPads(), 1L, 1L);
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
@@ -168,7 +168,7 @@ public class Infusion implements Listener, CommandExecutor {
         task = plugin.getServer().getScheduler().runTaskTimer(plugin, new AltarScanner(), 1L, 2L);
     }
 
-    void disable() {
+    public void disable() {
         if (task != null) {
             task.cancel();
             task  = null;

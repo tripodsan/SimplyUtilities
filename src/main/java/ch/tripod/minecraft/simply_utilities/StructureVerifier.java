@@ -116,12 +116,12 @@ public class StructureVerifier {
 
             BlockCondition that = (BlockCondition) o;
 
-            return mat == that.mat;
+            return mat == that.mat && data == that.data;
         }
 
         @Override
         public int hashCode() {
-            return mat.hashCode();
+            return mat.hashCode() + data;
         }
     }
 

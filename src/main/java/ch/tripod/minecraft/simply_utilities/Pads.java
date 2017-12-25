@@ -34,18 +34,18 @@ import org.bukkit.util.Vector;
 /**
  * {@code Main}...
  */
-public class Pads {
+public class Pads implements PluginUtility {
 
     private BukkitTask task;
 
     private JavaPlugin plugin;
 
-    void enable(JavaPlugin plugin) {
+    public void enable(JavaPlugin plugin) {
         this.plugin = plugin;
         task = plugin.getServer().getScheduler().runTaskTimer(plugin, new ScanForPads(), 1L, 1L);
     }
 
-    void disable() {
+    public void disable() {
         if (task != null) {
             task.cancel();
             task  = null;

@@ -46,7 +46,7 @@ import org.bukkit.util.Vector;
 /**
  * {@code Main}...
  */
-public class BlastFurnace implements Listener {
+public class BlastFurnace implements Listener, PluginUtility {
 
     private static class Corners {
         private Location l0;
@@ -70,7 +70,7 @@ public class BlastFurnace implements Listener {
 
     private BukkitTask task;
 
-    void enable(JavaPlugin plugin) {
+    public void enable(JavaPlugin plugin) {
         this.plugin = plugin;
         initRecipes();
 
@@ -78,7 +78,7 @@ public class BlastFurnace implements Listener {
         task = plugin.getServer().getScheduler().runTaskTimer(plugin, new StructureScanner(), 1L, 2L);
     }
 
-    void disable() {
+    public void disable() {
         if (task != null) {
             task.cancel();
             task  = null;

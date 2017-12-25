@@ -72,7 +72,7 @@ import static org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK;
 /**
  * {@code ExampleListener}...
  */
-public class Lazers implements Listener {
+public class Lazers implements Listener, PluginUtility {
 
     private static final List<String> LAZER_LORE = Collections.singletonList("SHOOP DA WOOP!");
 
@@ -92,7 +92,7 @@ public class Lazers implements Listener {
 
     private HashMap<String, Lazer> lazers = new HashMap<>();
 
-    void enable(JavaPlugin plugin) {
+    public void enable(JavaPlugin plugin) {
         this.plugin = plugin;
         createRecipes();
 
@@ -194,7 +194,7 @@ public class Lazers implements Listener {
         }
     }
 
-    void disable() {
+    public void disable() {
         if (task != null) {
             task.cancel();
             task = null;
@@ -370,7 +370,7 @@ public class Lazers implements Listener {
 
     private Lazer getLazer(World world, String key) {
         for (ArmorStand a: world.getEntitiesByClass(ArmorStand.class)) {
-            if (a.getCustomName().equals(key)) {
+            if (key.equals(a.getCustomName())) {
                 return lazers.computeIfAbsent(key, k -> new Lazer(a));
             }
         }

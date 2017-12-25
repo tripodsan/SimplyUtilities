@@ -47,7 +47,7 @@ import org.bukkit.util.Vector;
 /**
  * {@code Main}...
  */
-public class Alchemy implements Listener {
+public class Alchemy implements Listener, PluginUtility {
 
     private static class Corners {
         private Location l0;
@@ -181,7 +181,7 @@ public class Alchemy implements Listener {
 
     private BukkitTask task;
 
-    void enable(JavaPlugin plugin) {
+    public void enable(JavaPlugin plugin) {
         this.plugin = plugin;
         initRecipes();
 
@@ -189,7 +189,7 @@ public class Alchemy implements Listener {
         task = plugin.getServer().getScheduler().runTaskTimer(plugin, new AltarScanner(), 1L, 2L);
     }
 
-    void disable() {
+    public void disable() {
         if (task != null) {
             task.cancel();
             task  = null;
