@@ -47,6 +47,7 @@ public class Main extends JavaPlugin {
         addUtil(gen = new WorldGen());
         addUtil(new Placers());
         addUtil(new Breakers());
+        addUtil(new AdvancedEChest());
 
         createRecipes();
 
