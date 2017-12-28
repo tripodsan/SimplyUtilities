@@ -19,14 +19,14 @@ package ch.tripod.minecraft.simply_utilities;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.entity.ArmorStand;
+import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
-import org.bukkit.event.inventory.InventoryType;
-import org.bukkit.event.inventory.PrepareItemCraftEvent;
+import org.bukkit.event.inventory.*;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.*;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -37,10 +37,7 @@ import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.EulerAngle;
 import org.bukkit.util.Vector;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 
 /**
  * {@code ExampleListener}...
@@ -197,6 +194,17 @@ public class AdvancedEChest implements Listener, PluginUtility {
         }
     }
 
+    @EventHandler
+    public void onInventoryClose(InventoryCloseEvent event) {
+        InventoryView view = event.getView();
+        for (Echest chest: echests.values()) {
+            if (chest.views.contains(view)) {
+                chest.closeGUI(event.getPlayer(), view);
+                return;
+            }
+        }
+    }
+
     @EventHandler(ignoreCancelled = true)
     public void onCraftColoredPrismEvent(PrepareItemCraftEvent event) {
         // plugin.getLogger().info("prepare: " + event);
@@ -231,14 +239,28 @@ public class AdvancedEChest implements Listener, PluginUtility {
             Echest echest = getEchest(event.getClickedBlock());
             if (echest != null) {
                 event.setCancelled(true);
-                openGUI(event.getPlayer(), echest);
+                echest.openGUI(event.getPlayer());
             }
         }
     }
 
-    private void openGUI(Player player, Echest echest) {
-        Inventory inv = Bukkit.createInventory(player, InventoryType.CHEST, "Advanced Ender Chest (" + echest.channel + ")");
-        player.openInventory(inv); //YAAAAAAAAAA
+    private final Map<String, Channel> channels = new HashMap<>();
+
+    private Channel getChannel (String key) {
+        return channels.computeIfAbsent(key, k -> new Channel(key));
+    }
+
+    private class Channel {
+
+        private final String key;
+
+        private final Inventory inv;
+
+        public Channel(String key) {
+            this.key = key;
+            this.inv = Bukkit.createInventory(null, InventoryType.CHEST, "Advanced Ender Chest (" + key + ")");
+        }
+
     }
 
     private class Echest {
@@ -248,6 +270,8 @@ public class AdvancedEChest implements Listener, PluginUtility {
         private final String key;
 
         private String channel;
+
+        private Set<InventoryView> views = new HashSet<>();
 
         private Echest(ArmorStand stand) {
             this.stand = stand;
@@ -263,7 +287,17 @@ public class AdvancedEChest implements Listener, PluginUtility {
             return stand.getLocation().getBlock();
         }
 
+        private void openGUI(Player player) {
+            Channel c = getChannel(channel);
+            InventoryView view = player.openInventory(c.inv);
+            views.add(view);
+            player.getWorld().playSound(stand.getLocation(), Sound.BLOCK_ENDERCHEST_OPEN, 1, 1);
+        }
 
+        private void closeGUI(HumanEntity player, InventoryView view) {
+            views.remove(view);
+            player.getWorld().playSound(stand.getLocation(), Sound.BLOCK_ENDERCHEST_CLOSE, 1, 1);
+        }
 
     }
 
