@@ -23,21 +23,23 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
-import org.bukkit.Color;
-import org.bukkit.Effect;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.Sound;
-import org.bukkit.World;
+import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockDamageEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.inventory.InventoryType;
+import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.EquipmentSlot;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryView;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.material.Directional;
 import org.bukkit.material.MaterialData;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -312,6 +314,27 @@ public class Alchemy implements Listener, PluginUtility {
         } else {
             return null;
         }
+    }
+
+    @EventHandler
+    public void onPlayerInteract(PlayerInteractEvent event) {
+        if (event.getAction() == Action.RIGHT_CLICK_AIR
+                && event.getHand() == EquipmentSlot.HAND) {
+            ItemStack s = event.getItem();
+            List<String> lore = s.getItemMeta().getLore();
+            if (lore != null && lore.size() > 0 && lore.get(0).equals(LuckDisk.LORE[0])) {
+                Inventory inv = Bukkit.createInventory(null, 27, "Luck Disk");
+                InventoryView view = event.getPlayer().openInventory(inv);
+            }
+        }
+    }
+
+    public static class LuckDisk {
+
+        public static final String NAME = "Luck Disk";
+
+        public static final String[] LORE = {"Stores Luck Crystals."};
+
     }
 
     private class Altar {

@@ -16,12 +16,8 @@
  */
 package ch.tripod.minecraft.simply_utilities;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.lang.management.MemoryType;
+import java.util.*;
 
 import org.bukkit.ChatColor;
 import org.bukkit.Color;
@@ -76,6 +72,8 @@ public class Infusion implements Listener, CommandExecutor, PluginUtility {
 
     private Map<String, Corners> corners = new HashMap<>();
 
+    private Map<String, LuckCrystal> crystals = new HashMap<>();
+
     private Main plugin;
 
     private StructureVerifier verifier = new StructureVerifier("infusion").load(
@@ -97,8 +95,25 @@ public class Infusion implements Listener, CommandExecutor, PluginUtility {
             output.add(new ItemStack(mat, count));
         }
 
+        private void addOutput(Material mat, String name, String ... lore) {
+            ItemStack s = new ItemStack(mat, 1);
+            if (name.equals("Lapis Luck Crystal")) {
+                s = new ItemStack(mat, 1, (short) 0, (byte) 4);
+            }
+            ItemMeta m = s.getItemMeta();
+            m.setDisplayName(name);
+            m.setLore(Arrays.asList(lore));
+            m.addEnchant(Enchantment.PROTECTION_ENVIRONMENTAL, 1, false);
+            s.setItemMeta(m);
+            output.add(s);
+        }
+
         private void addIngredient(Material mat, int count) {
             ingredients.add(new ItemStack(mat, count));
+        }
+
+        private void addIngredient(Material mat, int count, byte data) {
+            ingredients.add(new ItemStack(mat, count, (short) 0, data));
         }
 
         public List<ItemStack> getIngredientList() {
@@ -114,7 +129,7 @@ public class Infusion implements Listener, CommandExecutor, PluginUtility {
             List<ItemStack> ingredients = getIngredientList();
             for (ItemStack item: items) {
                 for (ItemStack i: ingredients) {
-                    if (i.getType() == item.getType()) {
+                    if (i.getType() == item.getType() && i.getData().getData() == item.getData().getData()) {
                         i.setAmount(i.getAmount() - 1);
                         item.setAmount(0);
                         plugin.getLogger().info("matched ingredient:" + i);
@@ -155,6 +170,67 @@ public class Infusion implements Listener, CommandExecutor, PluginUtility {
             r.addOutput(Material.ENDER_STONE, 2);
             infusionRecipes.add(r);
         }
+        {
+            addCrystalRecipe("Quartz", Material.QUARTZ);
+            addCrystalRecipe("Redstone", Material.REDSTONE);
+            addCrystalRecipe("Emerald", Material.EMERALD);
+            addCrystalRecipe("Diamond", Material.DIAMOND);
+            addCrystalRecipe("Gold", Material.GOLD_INGOT);
+            addCrystalRecipe("Iron", Material.IRON_INGOT);
+            addCrystalRecipe("Lapis", Material.INK_SACK);
+            addCrystalRecipe("Coal", Material.COAL);
+            addCrystalRecipe("Glowstone", Material.GLOWSTONE_DUST);
+            addCrystalRecipe("Soul Sand", Material.NETHER_STALK);
+            addCrystalRecipe("Prismarine", Material.PRISMARINE_SHARD);
+
+            for (Material m: new Material[]{
+                    Material.GOLD_RECORD,
+                    Material.GREEN_RECORD,
+                    Material.RECORD_3,
+                    Material.RECORD_4,
+                    Material.RECORD_5,
+                    Material.RECORD_6,
+                    Material.RECORD_7,
+                    Material.RECORD_8,
+                    Material.RECORD_9,
+                    Material.RECORD_10,
+                    Material.RECORD_11,
+                    Material.RECORD_12
+            }) {
+                addRecordRecipe(m);
+            }
+        }
+
+    }
+
+    private void addRecordRecipe(Material disc){
+        InfusionRecipe r = new InfusionRecipe();
+        r.addIngredient(disc, 1);
+        r.addIngredient(Material.WATER_LILY, 1);
+        r.addIngredient(Material.CHEST, 1);
+        r.addIngredient(Material.PAPER, 1);
+        r.addOutput(Material.RECORD_8, Alchemy.LuckDisk.NAME, Alchemy.LuckDisk.LORE);
+        infusionRecipes.add(r);
+    }
+
+    private void addCrystalRecipe(String name, Material base){
+        LuckCrystal c = new LuckCrystal(name, base);
+        crystals.put(name, c);
+        InfusionRecipe r = new InfusionRecipe();
+        if (name.equals("Lapis")) {
+            r.addIngredient(base, 1, (byte) 4);
+        } else {
+            r.addIngredient(base, 1);
+        }
+        r.addIngredient(Material.BLAZE_POWDER, 1);
+        r.addIngredient(Material.FERMENTED_SPIDER_EYE, 1);
+        r.addIngredient(Material.GLASS, 1);
+        r.addOutput(base,
+                name + " Luck Crystal",
+                "Increases chance of transmution or infusion.",
+                "Put this in a Luck Disk to recieve a 4% boost for " + name.toLowerCase() + "!"
+        );
+        infusionRecipes.add(r);
     }
 
     private BukkitTask task;
@@ -172,6 +248,20 @@ public class Infusion implements Listener, CommandExecutor, PluginUtility {
         if (task != null) {
             task.cancel();
             task  = null;
+        }
+    }
+
+    private class LuckCrystal {
+
+        private final String name;
+
+        private final Material base;
+
+//        private final
+
+        public LuckCrystal(String name, Material base) {
+            this.name = name;
+            this.base = base;
         }
     }
 

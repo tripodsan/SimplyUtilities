@@ -20,6 +20,7 @@ import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.HumanEntity;
+import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -48,6 +49,9 @@ public class AdvancedEChest implements Listener, PluginUtility {
 
     private static final String ECHEST_LORE_CHANNEL_PREFIX = "+Channel: ";
 
+    private static final String CHANNEL_NOT_DEFINED = "not defined";
+
+    private static final String ECHEST_DISPLAY_NAME = ChatColor.DARK_PURPLE + "Advanced Ender Chest";
     private JavaPlugin plugin;
 
     private BukkitTask task;
@@ -69,7 +73,7 @@ public class AdvancedEChest implements Listener, PluginUtility {
         {
             ItemStack echest = new ItemStack(Material.ENDER_STONE);
             ItemMeta im = echest.getItemMeta();
-            im.setDisplayName(ChatColor.DARK_PURPLE + "Advanced Ender Chest");
+            im.setDisplayName(ECHEST_DISPLAY_NAME);
             im.setLore(MY_LORE);
             echest.setItemMeta(im);
             echestRecipe = new ShapedRecipe(new NamespacedKey(plugin, "echest"), echest);
@@ -118,6 +122,7 @@ public class AdvancedEChest implements Listener, PluginUtility {
             String key = getKey(event.getBlock().getLocation());
             if (removeEchest(event.getBlock().getWorld(), key)) {
                 player.sendMessage("you broke " + key);
+                event.setDropItems(false);
             }
         }
     }
@@ -163,6 +168,8 @@ public class AdvancedEChest implements Listener, PluginUtility {
         if (a != null) {
             a.stand.remove();
             echests.remove(key);
+            ItemStack item = a.createItem();
+            world.dropItem(a.getBlock().getLocation(), item);
             return true;
         }
         return false;
@@ -209,20 +216,80 @@ public class AdvancedEChest implements Listener, PluginUtility {
     public void onCraftColoredPrismEvent(PrepareItemCraftEvent event) {
         // plugin.getLogger().info("prepare: " + event);
         ItemStack[] ss = event.getInventory().getMatrix();
-        if (ss.length != echestRecipeShape.length) {
+        String channel = craftEchestFromRaw(ss);
+        if (channel == null) {
+            channel = craftEchestFromTemplate(ss);
+        }
+        if (channel == null) {
             return;
+        }
+        event.getInventory().setResult(createEChestItem(channel));
+    }
+
+    private String craftEchestFromRaw(ItemStack[] ss) {
+        if (ss.length != echestRecipeShape.length) {
+            return null;
         }
         String channel = "";
         for (int i=0; i<ss.length; i++) {
             ItemStack craftStack = ss[i];
             ItemStack recpStack = echestRecipe.getIngredientMap().get(echestRecipeShape[i]);
             if (craftStack == null || recpStack == null || craftStack.getType() != recpStack.getType()) {
-                return;
+                if (recpStack == null || recpStack.getType() != Material.WOOL) {
+                    return null;
+                }
             }
-            if (craftStack.getType() == Material.WOOL) {
-            channel += Integer.toHexString(craftStack.getData().getData());
+            if (craftStack != null && craftStack.getType() == Material.WOOL) {
+                channel += Integer.toHexString(craftStack.getData().getData());
             }
         }
+        if (channel.length() != 0 && channel.length() != 3) {
+            return null;
+        }
+        if (channel.length() == 0) {
+            channel = CHANNEL_NOT_DEFINED;
+        }
+        return channel;
+    }
+
+    private String craftEchestFromTemplate(ItemStack[] ss) {
+        if (ss.length != echestRecipeShape.length) {
+            return null;
+        }
+        ItemStack s = ss[4];
+        if (s == null) {
+            return null;
+        }
+        if (s.getType() != Material.ENDER_STONE) {
+            return null;
+        }
+        if (!s.getItemMeta().getDisplayName().equals(ECHEST_DISPLAY_NAME)) {
+            return null;
+        }
+        if (s.getItemMeta().getLore().size() < 2 && !s.getItemMeta().getLore().get(1).contains(CHANNEL_NOT_DEFINED)) {
+            return null;
+        }
+        int[] idxs = {1, 3, 5};
+        String channel = "";
+        for (int i: idxs) {
+            ItemStack craftStack = ss[i];
+            ItemStack recpStack = echestRecipe.getIngredientMap().get(echestRecipeShape[i]);
+            if (craftStack == null || recpStack == null || craftStack.getType() != recpStack.getType()) {
+                if (recpStack == null || recpStack.getType() != Material.WOOL) {
+                    return null;
+                }
+            }
+            if (craftStack != null && craftStack.getType() == Material.WOOL) {
+                channel += Integer.toHexString(craftStack.getData().getData());
+            }
+        }
+        if (channel.length() != 3) {
+            return null;
+        }
+        return channel;
+    }
+
+    public ItemStack createEChestItem(String channel) {
         ItemStack echest = new ItemStack(echestRecipe.getResult());
         ItemMeta im = echest.getItemMeta();
         List<String> newLore = new ArrayList<>(MY_LORE);
@@ -230,7 +297,7 @@ public class AdvancedEChest implements Listener, PluginUtility {
         newLore.add(ECHEST_LORE_CHANNEL_PREFIX + channel);
         im.setLore(newLore);
         echest.setItemMeta(im);
-        event.getInventory().setResult(echest);
+        return echest;
     }
 
     @EventHandler
@@ -273,10 +340,15 @@ public class AdvancedEChest implements Listener, PluginUtility {
 
         private Set<InventoryView> views = new HashSet<>();
 
+        private Inventory fallbackInventory = null;
+
         private Echest(ArmorStand stand) {
             this.stand = stand;
             key = getKey(stand.getLocation());
             channel = stand.getHelmet().getItemMeta().getDisplayName();
+            if (channel.equals(CHANNEL_NOT_DEFINED)) {
+                fallbackInventory = Bukkit.createInventory(null, InventoryType.CHEST, "Advanced Ender Chest (unlinked)");
+            }
         }
 
         private void update() {
@@ -288,9 +360,14 @@ public class AdvancedEChest implements Listener, PluginUtility {
         }
 
         private void openGUI(Player player) {
-            Channel c = getChannel(channel);
-            InventoryView view = player.openInventory(c.inv);
-            views.add(view);
+            if (fallbackInventory !=null) {
+                InventoryView view = player.openInventory(fallbackInventory);
+                views.add(view);
+            } else {
+                Channel c = getChannel(channel);
+                InventoryView view = player.openInventory(c.inv);
+                views.add(view);
+            }
             player.getWorld().playSound(stand.getLocation(), Sound.BLOCK_ENDERCHEST_OPEN, 1, 1);
         }
 
@@ -299,6 +376,9 @@ public class AdvancedEChest implements Listener, PluginUtility {
             player.getWorld().playSound(stand.getLocation(), Sound.BLOCK_ENDERCHEST_CLOSE, 1, 1);
         }
 
+        public ItemStack createItem() {
+            return createEChestItem(channel);
+        }
     }
 
     private class Scanner implements Runnable {
