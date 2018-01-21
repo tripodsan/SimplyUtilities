@@ -48,6 +48,7 @@ public class Main extends JavaPlugin {
         addUtil(new Placers());
         addUtil(new Breakers());
         addUtil(new AdvancedEChest());
+        addUtil(new EMC());
 
         createRecipes();
 
