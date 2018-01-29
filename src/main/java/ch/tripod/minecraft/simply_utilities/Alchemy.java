@@ -34,12 +34,9 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockDamageEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
-import org.bukkit.event.inventory.InventoryType;
+import org.bukkit.event.inventory.*;
 import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.inventory.EquipmentSlot;
-import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.InventoryView;
-import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.*;
 import org.bukkit.material.Directional;
 import org.bukkit.material.MaterialData;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -316,6 +313,8 @@ public class Alchemy implements Listener, PluginUtility {
         }
     }
 
+    private Map<InventoryView, ItemStack> openLuckDisks = new HashMap<>();
+
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
         if (event.getAction() == Action.RIGHT_CLICK_AIR
@@ -323,8 +322,42 @@ public class Alchemy implements Listener, PluginUtility {
             ItemStack s = event.getItem();
             List<String> lore = s.getItemMeta().getLore();
             if (lore != null && lore.size() > 0 && lore.get(0).equals(LuckDisk.LORE[0])) {
-                Inventory inv = Bukkit.createInventory(null, 27, "Luck Disk");
+                Inventory inv = Bukkit.createInventory(event.getPlayer(), 27, "Luck Disk");
                 InventoryView view = event.getPlayer().openInventory(inv);
+                openLuckDisks.put(view , s);
+            }
+        }
+    }
+
+    @EventHandler
+    public void onInventoryDrag(InventoryClickEvent evt) {
+        InventoryView view = evt.getView();
+        plugin.getLogger().info("item " + evt.getCursor() + " action: " + evt.getAction());
+        if ("Luck Disk".equals(evt.getClickedInventory().getName())) {
+            switch (evt.getAction()) {
+                case PLACE_ALL:
+                case PLACE_ONE:
+                case PLACE_SOME:
+                    break;
+                default:
+                    return;
+            }
+            ItemStack s = evt.getCursor();
+            if (!Infusion.LuckCrystal.isLuckCrystal(s)) {
+                evt.setCancelled(true);
+            }
+        }
+    }
+
+    @EventHandler
+    public void onInventoryClose(InventoryCloseEvent event) {
+        InventoryView view = event.getView();
+        if ("Luck Disk".equals(view.getTitle())) {
+            ItemStack s = openLuckDisks.remove(view);
+            if (s == null) {
+                plugin.getLogger().info(" haaa?");
+            } else {
+                plugin.getLogger().info("closed inventory of " + s);
             }
         }
     }

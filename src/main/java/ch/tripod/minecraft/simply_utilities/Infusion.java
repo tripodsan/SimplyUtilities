@@ -16,7 +16,6 @@
  */
 package ch.tripod.minecraft.simply_utilities;
 
-import java.lang.management.MemoryType;
 import java.util.*;
 
 import org.bukkit.ChatColor;
@@ -171,17 +170,9 @@ public class Infusion implements Listener, CommandExecutor, PluginUtility {
             infusionRecipes.add(r);
         }
         {
-            addCrystalRecipe("Quartz", Material.QUARTZ);
-            addCrystalRecipe("Redstone", Material.REDSTONE);
-            addCrystalRecipe("Emerald", Material.EMERALD);
-            addCrystalRecipe("Diamond", Material.DIAMOND);
-            addCrystalRecipe("Gold", Material.GOLD_INGOT);
-            addCrystalRecipe("Iron", Material.IRON_INGOT);
-            addCrystalRecipe("Lapis", Material.INK_SACK);
-            addCrystalRecipe("Coal", Material.COAL);
-            addCrystalRecipe("Glowstone", Material.GLOWSTONE_DUST);
-            addCrystalRecipe("Soul Sand", Material.NETHER_STALK);
-            addCrystalRecipe("Prismarine", Material.PRISMARINE_SHARD);
+            for (LuckCrystal.Type type: LuckCrystal.TYPES) {
+                addCrystalRecipe(type);
+            }
 
             for (Material m: new Material[]{
                     Material.GOLD_RECORD,
@@ -213,11 +204,12 @@ public class Infusion implements Listener, CommandExecutor, PluginUtility {
         infusionRecipes.add(r);
     }
 
-    private void addCrystalRecipe(String name, Material base){
-        LuckCrystal c = new LuckCrystal(name, base);
-        crystals.put(name, c);
+    private void addCrystalRecipe(LuckCrystal.Type type){
+        LuckCrystal c = new LuckCrystal(type);
+        crystals.put(type.name, c);
         InfusionRecipe r = new InfusionRecipe();
-        if (name.equals("Lapis")) {
+        Material base = type.mat;
+        if (type.name.equals("Lapis")) {
             r.addIngredient(base, 1, (byte) 4);
         } else {
             r.addIngredient(base, 1);
@@ -226,9 +218,9 @@ public class Infusion implements Listener, CommandExecutor, PluginUtility {
         r.addIngredient(Material.FERMENTED_SPIDER_EYE, 1);
         r.addIngredient(Material.GLASS, 1);
         r.addOutput(base,
-                name + " Luck Crystal",
-                "Increases chance of transmution or infusion.",
-                "Put this in a Luck Disk to recieve a 4% boost for " + name.toLowerCase() + "!"
+                type.name + " Luck Crystal",
+                LuckCrystal.LORE_LINE_0,
+                "Put this in a Luck Disk to receive a 4% boost for " + type.name.toLowerCase() + "!"
         );
         infusionRecipes.add(r);
     }
@@ -251,18 +243,60 @@ public class Infusion implements Listener, CommandExecutor, PluginUtility {
         }
     }
 
-    private class LuckCrystal {
+    public static class LuckCrystal {
 
-        private final String name;
+        private static String LORE_LINE_0 = "Increases chance of transmution or infusion.";
 
-        private final Material base;
 
-//        private final
+        private static class Type {
+            private final String name;
 
-        public LuckCrystal(String name, Material base) {
-            this.name = name;
-            this.base = base;
+            private final Material mat;
+
+            public Type(String name, Material mat) {
+                this.name = name;
+                this.mat = mat;
+            }
         }
+
+        public static final Type[] TYPES = {
+            new Type("Quartz", Material.QUARTZ),
+            new Type("Redstone", Material.REDSTONE),
+            new Type("Emerald", Material.EMERALD),
+            new Type("Diamond", Material.DIAMOND),
+            new Type("Gold", Material.GOLD_INGOT),
+            new Type("Iron", Material.IRON_INGOT),
+            new Type("Lapis", Material.INK_SACK),
+            new Type("Coal", Material.COAL),
+            new Type("Glowstone", Material.GLOWSTONE_DUST),
+            new Type("Soul Sand", Material.NETHER_STALK),
+            new Type("Prismarine", Material.PRISMARINE_SHARD)
+        };
+
+        private final Type type;
+
+        public LuckCrystal(Type type) {
+            this.type = type;
+        }
+
+        public static LuckCrystal fromCode(int c) {
+            return new LuckCrystal(TYPES[c]);
+        }
+
+        public static boolean isLuckCrystal(ItemStack s) {
+            List<String> lore = s.getItemMeta().getLore();
+            return lore != null && lore.size() > 0 && lore.get(0).equals(LORE_LINE_0);
+        }
+
+        public int toCode() {
+            for (int i=0; i<TYPES.length; i++) {
+                if (TYPES[i] == type) {
+                    return i;
+                }
+            }
+            return 0;
+        }
+
     }
 
     private class AltarScanner implements Runnable {
