@@ -279,8 +279,24 @@ public class Infusion implements Listener, CommandExecutor, PluginUtility {
             this.type = type;
         }
 
-        public static LuckCrystal fromCode(int c) {
-            return new LuckCrystal(TYPES[c]);
+        public static LuckCrystal fromCode(char c) {
+            int idx = c-65;
+            if (idx < 0 || idx >= TYPES.length) {
+                return null;
+            }
+            return new LuckCrystal(TYPES[idx]);
+        }
+
+        public static LuckCrystal fromItem(ItemStack s) {
+            if (s == null) {
+                return null;
+            }
+            for (Type t: TYPES) {
+                if (t.mat == s.getType()) {
+                    return new LuckCrystal(t);
+                }
+            }
+            return null;
         }
 
         public static boolean isLuckCrystal(ItemStack s) {
@@ -288,15 +304,31 @@ public class Infusion implements Listener, CommandExecutor, PluginUtility {
             return lore != null && lore.size() > 0 && lore.get(0).equals(LORE_LINE_0);
         }
 
-        public int toCode() {
+        public String toCode() {
             for (int i=0; i<TYPES.length; i++) {
                 if (TYPES[i] == type) {
-                    return i;
+                    return Character.toString((char) (i+65));
                 }
             }
-            return 0;
+            return ".";
         }
 
+        public ItemStack toItemStack() {
+            ItemStack s = new ItemStack(type.mat, 1);
+            if (type.name.equals("Lapis Luck Crystal")) {
+                s = new ItemStack(type.mat, 1, (short) 0, (byte) 4);
+            }
+            String[] lore = {
+                    LuckCrystal.LORE_LINE_0,
+                    "Put this in a Luck Disk to receive a 4% boost for " + type.name.toLowerCase() + "!"
+            };
+            ItemMeta m = s.getItemMeta();
+            m.setDisplayName(type.name);
+            m.setLore(Arrays.asList(lore));
+            m.addEnchant(Enchantment.PROTECTION_ENVIRONMENTAL, 1, false);
+            s.setItemMeta(m);
+            return s;
+        }
     }
 
     private class AltarScanner implements Runnable {

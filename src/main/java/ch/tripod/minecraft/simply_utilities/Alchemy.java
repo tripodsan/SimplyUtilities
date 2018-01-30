@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
+import org.apache.commons.lang.ObjectUtils;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
@@ -37,6 +38,7 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.inventory.*;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.*;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.material.Directional;
 import org.bukkit.material.MaterialData;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -313,7 +315,7 @@ public class Alchemy implements Listener, PluginUtility {
         }
     }
 
-    private Map<InventoryView, ItemStack> openLuckDisks = new HashMap<>();
+    private Map<InventoryView, Integer> openLuckDisks = new HashMap<>();
 
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
@@ -324,18 +326,45 @@ public class Alchemy implements Listener, PluginUtility {
             if (lore != null && lore.size() > 0 && lore.get(0).equals(LuckDisk.LORE[0])) {
                 Inventory inv = Bukkit.createInventory(event.getPlayer(), 27, "Luck Disk");
                 InventoryView view = event.getPlayer().openInventory(inv);
-                openLuckDisks.put(view , s);
+                openLuckDisks.put(view , event.getPlayer().getInventory().getHeldItemSlot());
+                String code = lore.size() > 1 ? lore.get(1) : "";
+                plugin.getLogger().info("the new code is:" + code);
+                ItemStack[] contents = view.getTopInventory().getContents();
+                for (int i=0; i<code.length(); i++) {
+                    Infusion.LuckCrystal crystal = Infusion.LuckCrystal.fromCode(code.charAt(i));
+                    if (crystal != null) {
+                        contents[i] = crystal.toItemStack();
+                    }
+                }
+                view.getTopInventory().setContents(contents);
             }
         }
     }
 
     @EventHandler
-    public void onInventoryDrag(InventoryClickEvent evt) {
+    public void onInventoryDrag(InventoryDragEvent evt) {
+        if ("Luck Disk".equals(evt.getInventory().getName())) {
+            int low = 50;
+            for (Map.Entry<Integer, ItemStack> e: evt.getNewItems().entrySet()) {
+                int idx = e.getKey();
+                if (idx < low) {
+                    low = idx;
+                }
+            }
+            if (low < 27) {
+                evt.setCancelled(true);
+            }
+        }
+    }
+
+    @EventHandler
+    public void onInventoryClick(InventoryClickEvent evt) {
         InventoryView view = evt.getView();
-        plugin.getLogger().info("item " + evt.getCursor() + " action: " + evt.getAction());
+        // plugin.getLogger().info("item " + evt.getCursor() + " action: " + evt.getAction() + " current: " + evt.getCurrentItem());
         if ("Luck Disk".equals(evt.getClickedInventory().getName())) {
             switch (evt.getAction()) {
                 case PLACE_ALL:
+                case SWAP_WITH_CURSOR:
                 case PLACE_ONE:
                 case PLACE_SOME:
                     break;
@@ -343,9 +372,18 @@ public class Alchemy implements Listener, PluginUtility {
                     return;
             }
             ItemStack s = evt.getCursor();
+            ItemStack c = evt.getCurrentItem();
+            evt.setCancelled(true);
             if (!Infusion.LuckCrystal.isLuckCrystal(s)) {
-                evt.setCancelled(true);
+                return;
             }
+            if (c.getType() != Material.AIR) {
+                return;
+            }
+            ItemStack newItem = new ItemStack(s);
+            newItem.setAmount(1);
+            evt.setCurrentItem(newItem);
+            s.setAmount(s.getAmount() - 1);
         }
     }
 
@@ -353,11 +391,37 @@ public class Alchemy implements Listener, PluginUtility {
     public void onInventoryClose(InventoryCloseEvent event) {
         InventoryView view = event.getView();
         if ("Luck Disk".equals(view.getTitle())) {
-            ItemStack s = openLuckDisks.remove(view);
-            if (s == null) {
-                plugin.getLogger().info(" haaa?");
+            Integer itemSlot = openLuckDisks.remove(view);
+            if (itemSlot == null) {
+                plugin.getLogger().info("haaa?");
             } else {
-                plugin.getLogger().info("closed inventory of " + s);
+                plugin.getLogger().info("closed inventory of " + itemSlot);
+                ItemStack luckDisk = event.getPlayer().getInventory().getItemInMainHand();
+                plugin.getLogger().info("item in main hand: " + luckDisk);
+
+                ItemStack[] contents = event.getInventory().getContents();
+                StringBuilder code = new StringBuilder();
+                for (int i=0; i<27; i++) {
+                    ItemStack slot = contents[i];
+                    Infusion.LuckCrystal crystal = Infusion.LuckCrystal.fromItem(slot);
+                    if (crystal == null) {
+                        code.append(".");
+                    } else {
+                        code.append(crystal.toCode());
+                    }
+                }
+                plugin.getLogger().info("code is: " + code);
+
+                ItemMeta meta = luckDisk.getItemMeta();
+                List<String> lore = meta.getLore();
+                if (lore.size() == 1) {
+                    lore.add(code.toString());
+                } else {
+                    lore.set(1, code.toString());
+                }
+                meta.setLore(lore);
+                luckDisk.setItemMeta(meta);
+                event.getPlayer().getInventory().setItemInMainHand(luckDisk);
             }
         }
     }
