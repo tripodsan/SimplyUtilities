@@ -62,16 +62,12 @@ public class Infusion implements Listener, CommandExecutor, PluginUtility {
     private static final String WAND_NAME = ChatColor.DARK_GREEN + "Simply Wand";
     private static final List<String> WAND_LORE = Collections.singletonList(ChatColor.WHITE + "Left/right click to set corners.");
 
-    //private BukkitTask task;
-
     private static class Corners {
         private Location l0;
         private Location l1;
     }
 
     private Map<String, Corners> corners = new HashMap<>();
-
-    private Map<String, LuckCrystal> crystals = new HashMap<>();
 
     private Main plugin;
 
@@ -96,14 +92,15 @@ public class Infusion implements Listener, CommandExecutor, PluginUtility {
 
         private void addOutput(Material mat, String name, String ... lore) {
             ItemStack s = new ItemStack(mat, 1);
-            if (name.equals("Lapis Luck Crystal")) {
-                s = new ItemStack(mat, 1, (short) 0, (byte) 4);
-            }
             ItemMeta m = s.getItemMeta();
             m.setDisplayName(name);
             m.setLore(Arrays.asList(lore));
             m.addEnchant(Enchantment.PROTECTION_ENVIRONMENTAL, 1, false);
             s.setItemMeta(m);
+            output.add(s);
+        }
+
+        private void addOutput(ItemStack s) {
             output.add(s);
         }
 
@@ -170,8 +167,8 @@ public class Infusion implements Listener, CommandExecutor, PluginUtility {
             infusionRecipes.add(r);
         }
         {
-            for (LuckCrystal.Type type: LuckCrystal.TYPES) {
-                addCrystalRecipe(type);
+            for (LuckCrystal crystal: LuckCrystal.TYPES) {
+                addCrystalRecipe(crystal);
             }
 
             for (Material m: new Material[]{
@@ -200,16 +197,14 @@ public class Infusion implements Listener, CommandExecutor, PluginUtility {
         r.addIngredient(Material.WATER_LILY, 1);
         r.addIngredient(Material.CHEST, 1);
         r.addIngredient(Material.PAPER, 1);
-        r.addOutput(Material.RECORD_8, Alchemy.LuckDisk.NAME, Alchemy.LuckDisk.LORE);
+        r.addOutput(Material.RECORD_8, LuckDisk.NAME, LuckDisk.LORE);
         infusionRecipes.add(r);
     }
 
-    private void addCrystalRecipe(LuckCrystal.Type type){
-        LuckCrystal c = new LuckCrystal(type);
-        crystals.put(type.name, c);
+    private void addCrystalRecipe(LuckCrystal c){
         InfusionRecipe r = new InfusionRecipe();
-        Material base = type.mat;
-        if (type.name.equals("Lapis")) {
+        Material base = c.mat;
+        if ("Lapis".equals(c.name)) {
             r.addIngredient(base, 1, (byte) 4);
         } else {
             r.addIngredient(base, 1);
@@ -217,11 +212,7 @@ public class Infusion implements Listener, CommandExecutor, PluginUtility {
         r.addIngredient(Material.BLAZE_POWDER, 1);
         r.addIngredient(Material.FERMENTED_SPIDER_EYE, 1);
         r.addIngredient(Material.GLASS, 1);
-        r.addOutput(base,
-                type.name + " Luck Crystal",
-                LuckCrystal.LORE_LINE_0,
-                "Put this in a Luck Disk to receive a 4% boost for " + type.name.toLowerCase() + "!"
-        );
+        r.addOutput(c.toItemStack());
         infusionRecipes.add(r);
     }
 
@@ -240,94 +231,6 @@ public class Infusion implements Listener, CommandExecutor, PluginUtility {
         if (task != null) {
             task.cancel();
             task  = null;
-        }
-    }
-
-    public static class LuckCrystal {
-
-        private static String LORE_LINE_0 = "Increases chance of transmution or infusion.";
-
-
-        private static class Type {
-            private final String name;
-
-            private final Material mat;
-
-            public Type(String name, Material mat) {
-                this.name = name;
-                this.mat = mat;
-            }
-        }
-
-        public static final Type[] TYPES = {
-            new Type("Quartz", Material.QUARTZ),
-            new Type("Redstone", Material.REDSTONE),
-            new Type("Emerald", Material.EMERALD),
-            new Type("Diamond", Material.DIAMOND),
-            new Type("Gold", Material.GOLD_INGOT),
-            new Type("Iron", Material.IRON_INGOT),
-            new Type("Lapis", Material.INK_SACK),
-            new Type("Coal", Material.COAL),
-            new Type("Glowstone", Material.GLOWSTONE_DUST),
-            new Type("Soul Sand", Material.NETHER_STALK),
-            new Type("Prismarine", Material.PRISMARINE_SHARD)
-        };
-
-        private final Type type;
-
-        public LuckCrystal(Type type) {
-            this.type = type;
-        }
-
-        public static LuckCrystal fromCode(char c) {
-            int idx = c-65;
-            if (idx < 0 || idx >= TYPES.length) {
-                return null;
-            }
-            return new LuckCrystal(TYPES[idx]);
-        }
-
-        public static LuckCrystal fromItem(ItemStack s) {
-            if (s == null) {
-                return null;
-            }
-            for (Type t: TYPES) {
-                if (t.mat == s.getType()) {
-                    return new LuckCrystal(t);
-                }
-            }
-            return null;
-        }
-
-        public static boolean isLuckCrystal(ItemStack s) {
-            List<String> lore = s.getItemMeta().getLore();
-            return lore != null && lore.size() > 0 && lore.get(0).equals(LORE_LINE_0);
-        }
-
-        public String toCode() {
-            for (int i=0; i<TYPES.length; i++) {
-                if (TYPES[i] == type) {
-                    return Character.toString((char) (i+65));
-                }
-            }
-            return ".";
-        }
-
-        public ItemStack toItemStack() {
-            ItemStack s = new ItemStack(type.mat, 1);
-            if (type.name.equals("Lapis Luck Crystal")) {
-                s = new ItemStack(type.mat, 1, (short) 0, (byte) 4);
-            }
-            String[] lore = {
-                    LuckCrystal.LORE_LINE_0,
-                    "Put this in a Luck Disk to receive a 4% boost for " + type.name.toLowerCase() + "!"
-            };
-            ItemMeta m = s.getItemMeta();
-            m.setDisplayName(type.name);
-            m.setLore(Arrays.asList(lore));
-            m.addEnchant(Enchantment.PROTECTION_ENVIRONMENTAL, 1, false);
-            s.setItemMeta(m);
-            return s;
         }
     }
 

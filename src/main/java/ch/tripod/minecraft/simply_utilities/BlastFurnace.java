@@ -16,20 +16,15 @@
  */
 package ch.tripod.minecraft.simply_utilities;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
-import org.bukkit.Color;
 import org.bukkit.Effect;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.FallingBlock;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -37,25 +32,16 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.material.Chest;
 import org.bukkit.material.MaterialData;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
-import org.bukkit.util.Vector;
 
 /**
  * {@code Main}...
  */
 public class BlastFurnace implements Listener, PluginUtility {
 
-    private static class Corners {
-        private Location l0;
-        private Location l1;
-    }
-
     private final static String STRUCTURE_PREFIX = "furnace-";
-
-    private Map<String, Corners> corners = new HashMap<>();
 
     private JavaPlugin plugin;
 
@@ -98,10 +84,6 @@ public class BlastFurnace implements Listener, PluginUtility {
                 }
             }
         }
-    }
-
-    private Corners getCorners(Player p) {
-        return corners.computeIfAbsent(p.getDisplayName(), s -> new Corners());
     }
 
     @EventHandler

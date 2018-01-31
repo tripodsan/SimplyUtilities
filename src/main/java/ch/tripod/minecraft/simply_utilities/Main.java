@@ -16,16 +16,15 @@
  */
 package ch.tripod.minecraft.simply_utilities;
 
+import java.util.LinkedList;
+import java.util.List;
+
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.ShapelessRecipe;
-import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
-
-import java.util.LinkedList;
-import java.util.List;
 
 /**
  * {@code Main}...
@@ -39,6 +38,7 @@ public class Main extends JavaPlugin {
     @Override
     public void onEnable() {
         super.onEnable();
+        Log.setLogger(getLogger());
         addUtil(new Lazers());
         addUtil(new Pads());
         addUtil(new Infusion());
@@ -52,8 +52,8 @@ public class Main extends JavaPlugin {
 
         createRecipes();
 
-        this.getLogger().info("Simply Utilities plugin enabled.");
-        this.getLogger().info("I'm in the system now! WHEEEEEEEEEEEEEEE!");
+        Log.info("Simply Utilities plugin enabled.");
+        Log.info("I'm in the system now! WHEEEEEEEEEEEEEEE!");
     }
 
     @Override
