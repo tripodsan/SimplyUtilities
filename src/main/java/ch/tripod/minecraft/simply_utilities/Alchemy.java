@@ -435,7 +435,7 @@ public class Alchemy implements Listener, PluginUtility {
             ItemStack glass = new ItemStack(Material.STAINED_GLASS_PANE, 1, (byte) 8);
             ItemMeta m = glass.getItemMeta();
             m.setDisplayName(" ");
-            m.setLore(Collections.singletonList(" "));
+            m.setLore(Collections.singletonList("."));
             glass.setItemMeta(m);
             for (int i=0; i<contents.length; i++) {
                 if (i == 4) {
@@ -483,7 +483,6 @@ public class Alchemy implements Listener, PluginUtility {
                 case SWAP_WITH_CURSOR:
                     LuckDisk disk = LuckDisk.fromItem(evt.getCursor());
                     if (disk == null) {
-
                         evt.setCancelled(true);
                     } else {
                         stand.setItemInHand(evt.getCursor());
