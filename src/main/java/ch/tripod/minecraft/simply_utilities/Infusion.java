@@ -397,7 +397,7 @@ public class Infusion implements Listener, CommandExecutor, PluginUtility {
 
     private Altar getAltar(World world, String key) {
         for (ArmorStand a: world.getEntitiesByClass(ArmorStand.class)) {
-            if (a.getCustomName().equals(key)) {
+            if (key.equals(a.getCustomName())) {
                 return altars.computeIfAbsent(key, k -> new Altar(a));
             }
         }

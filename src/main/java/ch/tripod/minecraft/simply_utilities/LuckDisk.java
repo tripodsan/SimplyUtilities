@@ -125,6 +125,7 @@ public class LuckDisk {
                 case SWAP_WITH_CURSOR:
                 case PLACE_ONE:
                 case PLACE_SOME:
+                case MOVE_TO_OTHER_INVENTORY:
                     break;
                 default:
                     return;

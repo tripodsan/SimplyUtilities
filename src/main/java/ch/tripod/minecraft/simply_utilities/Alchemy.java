@@ -16,19 +16,9 @@
  */
 package ch.tripod.minecraft.simply_utilities;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 
-import org.bukkit.Color;
-import org.bukkit.Effect;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.Sound;
-import org.bukkit.World;
+import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.ArmorStand;
@@ -38,15 +28,18 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
-import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.inventory.InventoryCloseEvent;
-import org.bukkit.event.inventory.InventoryDragEvent;
+import org.bukkit.event.inventory.*;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryView;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.material.Directional;
 import org.bukkit.material.MaterialData;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
+import org.bukkit.util.EulerAngle;
 import org.bukkit.util.Vector;
 
 /**
@@ -256,9 +249,12 @@ public class Alchemy implements Listener, PluginUtility {
         a.teleport(loc);
         a.setCustomName(key);
         a.setCustomNameVisible(true);
-        a.setVisible(false);
+        a.setVisible(true);
         a.setGravity(false);
         a.setMarker(true);
+        a.setArms(true);
+        a.setLeftArmPose(new EulerAngle(Math.toRadians(170), Math.toRadians(170), Math.toRadians(31)));
+        a.setRightArmPose(new EulerAngle(Math.toRadians(170), Math.toRadians(170), Math.toRadians(31)));
 
         // play effect
         float red = 0f;
@@ -284,7 +280,7 @@ public class Alchemy implements Listener, PluginUtility {
 
     private Altar getAltar(World world, String key) {
         for (ArmorStand a: world.getEntitiesByClass(ArmorStand.class)) {
-            if (a.getCustomName().equals(key)) {
+            if (key.equals(a.getCustomName())) {
                 return altars.computeIfAbsent(key, k -> new Altar(a));
             }
         }
@@ -315,6 +311,14 @@ public class Alchemy implements Listener, PluginUtility {
             LuckDisk disk = LuckDisk.fromItem(event.getItem());
             if (disk != null) {
                 disk.openInventory(event.getPlayer());
+                return;
+            }
+        }
+        if (event.getAction() == Action.RIGHT_CLICK_BLOCK) {
+            Altar a = getAltar(event.getClickedBlock());
+            if (a != null) {
+                a.openInventory(event.getPlayer());
+                event.setCancelled(true);
             }
         }
     }
@@ -327,6 +331,7 @@ public class Alchemy implements Listener, PluginUtility {
     @EventHandler
     public void onInventoryClick(InventoryClickEvent evt) {
         LuckDisk.delegate(evt);
+        delegateToAltars(evt);
     }
 
     @EventHandler
@@ -334,7 +339,15 @@ public class Alchemy implements Listener, PluginUtility {
         LuckDisk.delegate(evt);
     }
 
+    public void delegateToAltars(InventoryEvent evt) {
+        for (Altar a: altars.values()) {
+            a.delegate(evt);
+        }
+    }
+
     private class Altar {
+
+        private static final String NAME = "Alchemy Table";
 
         private final ArmorStand stand;
 
@@ -352,6 +365,8 @@ public class Alchemy implements Listener, PluginUtility {
 
         private Vector boxMin;
         private Vector boxMax;
+
+        private Inventory inventory;
 
         public Altar(ArmorStand stand) {
             this.stand = stand;
@@ -408,6 +423,81 @@ public class Alchemy implements Listener, PluginUtility {
             }
         }
 
+        public void openInventory(Player player) {
+            if (inventory != null) {
+                player.openInventory(inventory);
+                return;
+            }
+            inventory = Bukkit.createInventory(player, InventoryType.DROPPER, NAME);
+            InventoryView view = player.openInventory(inventory);
+
+            ItemStack[] contents = view.getTopInventory().getContents();
+            ItemStack glass = new ItemStack(Material.STAINED_GLASS_PANE, 1, (byte) 8);
+            ItemMeta m = glass.getItemMeta();
+            m.setDisplayName(" ");
+            m.setLore(Collections.singletonList(" "));
+            glass.setItemMeta(m);
+            for (int i=0; i<contents.length; i++) {
+                if (i == 4) {
+                    ItemStack disk = stand.getItemInHand();
+                    if (disk != null) {
+                        contents[i] = disk;
+                    }
+                } else {
+                    contents[i] = glass;
+                }
+            }
+            view.getTopInventory().setContents(contents);
+        }
+
+        public void delegate(InventoryEvent evt) {
+            if (evt.getInventory() == inventory) {
+                try {
+                    getClass().getMethod("on", evt.getClass()).invoke(this, evt);
+                } catch (Exception e) {
+                    Log.warn("Unable to delegate event: %s", evt);
+                }
+            }
+        }
+
+        public void on(InventoryClickEvent evt) {
+            int slot = evt.getRawSlot();
+            if (slot >= 9 || slot != 4) {
+                if (slot < 9) {
+                    evt.setCancelled(true);
+                }
+                if (evt.getAction() == InventoryAction.MOVE_TO_OTHER_INVENTORY) {
+                    LuckDisk disk = LuckDisk.fromItem(evt.getCurrentItem());
+                    if (disk == null) {
+                        evt.setCancelled(true);
+                    } else {
+                        stand.setItemInHand(evt.getCurrentItem());
+                    }
+                }
+                return;
+            }
+            switch (evt.getAction()) {
+                case PLACE_ALL:
+                case PLACE_SOME:
+                case PLACE_ONE:
+                case SWAP_WITH_CURSOR:
+                    LuckDisk disk = LuckDisk.fromItem(evt.getCursor());
+                    if (disk == null) {
+
+                        evt.setCancelled(true);
+                    } else {
+                        stand.setItemInHand(evt.getCursor());
+                    }
+                    break;
+                case PICKUP_ALL:
+                case PICKUP_HALF:
+                case PICKUP_ONE:
+                case PICKUP_SOME:
+                case MOVE_TO_OTHER_INVENTORY:
+                    stand.setItemInHand(null);
+                    break;
+            }
+        }
     }
 
     private List<Photon> photons = new ArrayList<>(10000);
