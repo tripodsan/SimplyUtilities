@@ -1,10 +1,23 @@
 {
-  "docs": {
-    "Docusaurus": ["doc1"],
-    "First Category": ["doc2"],
-    "Second Category": ["doc3"]
-  },
-  "docs-other": {
-    "First Category": ["doc4", "doc5"]
-  }
+    "docs": {
+        "Alchemy": [
+            "alchemy",
+            "alchemy-ores"
+        ],
+        "Lazers": [
+            "lazers",
+            "lazers-emitter",
+            "lazers-mirror"
+        ],
+        "Misc": [
+            "boost-pads",
+            "conveyor-belts"
+        ]
+    },
+    "docs-other": {
+        "First Category": [
+            "doc4",
+            "doc5"
+        ]
+    }
 }

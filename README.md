@@ -2,18 +2,38 @@ Simply Utilities
 ================
 The ultimate plugin.
 
-Pads
-----
-todo
+To view the [user guide](http://simply.tripod.ch/) for instructions. 
 
-Gifs
-------
-![Logo](SimplyUtilitiesLogo.gif)
 
-Lazers
-------
-![Lazer](doc/r_lazer.png)
-![Mirror](doc/r_mirror.png)
-![Spanner](doc/r_spanner.png)
-![Prism](doc/r_prism.png)
-![Zap](doc/r_zap_augment.png)
+
+Building
+--------
+
+```bash
+mvn clean install
+```
+
+Installing
+----------
+
+...
+
+
+Site generation
+---------------
+
+### site development
+
+```bash
+yarn start
+```
+
+open: http://localhost:3000/
+
+
+### site deployment
+
+```bash
+USE_SSH=true yarn publish-gh-pages
+
+```
