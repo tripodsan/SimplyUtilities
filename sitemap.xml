@@ -8,9 +8,11 @@
 <url> <loc>http://simply.tripod.ch/blog/2017/09/25/testing-rss.html</loc> <changefreq>weekly</changefreq> <priority>0.3</priority> </url>
 <url> <loc>http://simply.tripod.ch/blog/2017/04/10/blog-post-two.html</loc> <changefreq>weekly</changefreq> <priority>0.3</priority> </url>
 <url> <loc>http://simply.tripod.ch/blog/2016/03/11/blog-post.html</loc> <changefreq>weekly</changefreq> <priority>0.3</priority> </url>
-<url> <loc>http://simply.tripod.ch/docs/doc1.html</loc> <changefreq>hourly</changefreq> <priority>1.0</priority> <xhtml:link rel="alternate" hreflang="en" href="http://simply.tripod.ch/docs/doc1.html" /> </url>
-<url> <loc>http://simply.tripod.ch/docs/doc2.html</loc> <changefreq>hourly</changefreq> <priority>1.0</priority> <xhtml:link rel="alternate" hreflang="en" href="http://simply.tripod.ch/docs/doc2.html" /> </url>
-<url> <loc>http://simply.tripod.ch/docs/doc3.html</loc> <changefreq>hourly</changefreq> <priority>1.0</priority> <xhtml:link rel="alternate" hreflang="en" href="http://simply.tripod.ch/docs/doc3.html" /> </url>
-<url> <loc>http://simply.tripod.ch/docs/doc4.html</loc> <changefreq>hourly</changefreq> <priority>1.0</priority> <xhtml:link rel="alternate" hreflang="en" href="http://simply.tripod.ch/docs/doc4.html" /> </url>
-<url> <loc>http://simply.tripod.ch/docs/doc5.html</loc> <changefreq>hourly</changefreq> <priority>1.0</priority> <xhtml:link rel="alternate" hreflang="en" href="http://simply.tripod.ch/docs/doc5.html" /> </url>
+<url> <loc>http://simply.tripod.ch/docs/alchemy.html</loc> <changefreq>hourly</changefreq> <priority>1.0</priority> <xhtml:link rel="alternate" hreflang="en" href="http://simply.tripod.ch/docs/alchemy.html" /> </url>
+<url> <loc>http://simply.tripod.ch/docs/alchemy-ores.html</loc> <changefreq>hourly</changefreq> <priority>1.0</priority> <xhtml:link rel="alternate" hreflang="en" href="http://simply.tripod.ch/docs/alchemy-ores.html" /> </url>
+<url> <loc>http://simply.tripod.ch/docs/lazers-emitter.html</loc> <changefreq>hourly</changefreq> <priority>1.0</priority> <xhtml:link rel="alternate" hreflang="en" href="http://simply.tripod.ch/docs/lazers-emitter.html" /> </url>
+<url> <loc>http://simply.tripod.ch/docs/lazers-mirror.html</loc> <changefreq>hourly</changefreq> <priority>1.0</priority> <xhtml:link rel="alternate" hreflang="en" href="http://simply.tripod.ch/docs/lazers-mirror.html" /> </url>
+<url> <loc>http://simply.tripod.ch/docs/lazers.html</loc> <changefreq>hourly</changefreq> <priority>1.0</priority> <xhtml:link rel="alternate" hreflang="en" href="http://simply.tripod.ch/docs/lazers.html" /> </url>
+<url> <loc>http://simply.tripod.ch/docs/boost-pads.html</loc> <changefreq>hourly</changefreq> <priority>1.0</priority> <xhtml:link rel="alternate" hreflang="en" href="http://simply.tripod.ch/docs/boost-pads.html" /> </url>
+<url> <loc>http://simply.tripod.ch/docs/conveyor-belts.html</loc> <changefreq>hourly</changefreq> <priority>1.0</priority> <xhtml:link rel="alternate" hreflang="en" href="http://simply.tripod.ch/docs/conveyor-belts.html" /> </url>
 </urlset>
