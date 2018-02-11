@@ -16,13 +16,11 @@
  */
 package ch.tripod.minecraft.simply_utilities;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.bukkit.Effect;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.World;
+import org.bukkit.*;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -32,7 +30,9 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.material.MaterialData;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.map.MapView;
+import org.bukkit.material.*;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 
@@ -50,6 +50,57 @@ public class BlastFurnace implements Listener, PluginUtility {
     );
 
     private HashMap<String, Structure> structures = new HashMap<>();
+
+    private final static Map<Material, ItemStack> SMELTIES = new HashMap<>();
+    static {
+        SMELTIES.put(Material.COBBLESTONE, new ItemStack(Material.STONE, 2));
+        SMELTIES.put(Material.SAND, new ItemStack(Material.GLASS, 2));
+        SMELTIES.put(Material.GOLD_ORE, new ItemStack(Material.GOLD_INGOT, 2));
+        SMELTIES.put(Material.IRON_ORE, new ItemStack(Material.IRON_INGOT, 2));
+        SMELTIES.put(Material.COAL_ORE, new ItemStack(Material.COAL, 2));
+        SMELTIES.put(Material.LOG, new ItemStack(Material.COAL, 2, (byte) 1));
+        SMELTIES.put(Material.SPONGE, new ItemStack(Material.SPONGE, 1));
+        SMELTIES.put(Material.LAPIS_ORE, new ItemStack(Material.INK_SACK, 2, (byte) 4));
+        SMELTIES.put(Material.DIAMOND_ORE, new ItemStack(Material.DIAMOND, 2));
+        SMELTIES.put(Material.REDSTONE_ORE, new ItemStack(Material.REDSTONE, 2));
+        SMELTIES.put(Material.CACTUS, new ItemStack(Material.INK_SACK, 2, (byte) 2));
+        SMELTIES.put(Material.CLAY, new ItemStack(Material.HARD_CLAY, 2));
+        SMELTIES.put(Material.NETHERRACK, new ItemStack(Material.NETHER_BRICK, 2));
+        SMELTIES.put(Material.EMERALD_ORE, new ItemStack(Material.EMERALD, 2));
+        SMELTIES.put(Material.QUARTZ_ORE, new ItemStack(Material.QUARTZ, 2));
+        SMELTIES.put(Material.STAINED_CLAY, new ItemStack(Material.BLACK_GLAZED_TERRACOTTA));
+        SMELTIES.put(Material.ENDER_STONE, new ItemStack(Material.END_BRICKS, 2));
+        SMELTIES.put(Material.IRON_SPADE, new ItemStack(Material.IRON_NUGGET, 2));
+        SMELTIES.put(Material.IRON_PICKAXE, new ItemStack(Material.IRON_NUGGET, 2));
+        SMELTIES.put(Material.IRON_AXE, new ItemStack(Material.IRON_NUGGET, 2));
+        SMELTIES.put(Material.IRON_SWORD, new ItemStack(Material.IRON_NUGGET, 2));
+        SMELTIES.put(Material.GOLD_SWORD, new ItemStack(Material.GOLD_NUGGET, 2));
+        SMELTIES.put(Material.GOLD_SPADE, new ItemStack(Material.GOLD_NUGGET, 2));
+        SMELTIES.put(Material.GOLD_PICKAXE, new ItemStack(Material.GOLD_NUGGET, 2));
+        SMELTIES.put(Material.GOLD_AXE, new ItemStack(Material.GOLD_NUGGET, 2));
+        SMELTIES.put(Material.IRON_HOE, new ItemStack(Material.IRON_NUGGET, 2));
+        SMELTIES.put(Material.GOLD_HOE, new ItemStack(Material.GOLD_NUGGET, 2));
+        SMELTIES.put(Material.IRON_HELMET, new ItemStack(Material.IRON_NUGGET, 2));
+        SMELTIES.put(Material.IRON_CHESTPLATE, new ItemStack(Material.IRON_NUGGET, 2));
+        SMELTIES.put(Material.IRON_LEGGINGS, new ItemStack(Material.IRON_NUGGET, 2));
+        SMELTIES.put(Material.IRON_BOOTS, new ItemStack(Material.IRON_NUGGET, 2));
+        SMELTIES.put(Material.GOLD_HELMET, new ItemStack(Material.GOLD_NUGGET, 2));
+        SMELTIES.put(Material.GOLD_CHESTPLATE, new ItemStack(Material.GOLD_NUGGET, 2));
+        SMELTIES.put(Material.GOLD_LEGGINGS, new ItemStack(Material.GOLD_NUGGET, 2));
+        SMELTIES.put(Material.GOLD_BOOTS, new ItemStack(Material.GOLD_NUGGET, 2));
+        SMELTIES.put(Material.PORK, new ItemStack(Material.GRILLED_PORK, 2));
+        SMELTIES.put(Material.CLAY_BALL, new ItemStack(Material.CLAY_BRICK, 2));
+        SMELTIES.put(Material.RAW_FISH, new ItemStack(Material.COOKED_FISH, 2));
+        SMELTIES.put(Material.RAW_BEEF, new ItemStack(Material.COOKED_BEEF, 2));
+        SMELTIES.put(Material.RAW_CHICKEN, new ItemStack(Material.COOKED_CHICKEN, 2));
+        SMELTIES.put(Material.ROTTEN_FLESH, new ItemStack(Material.LEATHER, 2));
+        SMELTIES.put(Material.POTATO_ITEM, new ItemStack(Material.BAKED_POTATO, 2));
+        SMELTIES.put(Material.RABBIT, new ItemStack(Material.COOKED_RABBIT));
+        SMELTIES.put(Material.IRON_BARDING, new ItemStack(Material.IRON_NUGGET, 2));
+        SMELTIES.put(Material.GOLD_BARDING, new ItemStack(Material.GOLD_NUGGET, 2));
+        SMELTIES.put(Material.MUTTON, new ItemStack(Material.COOKED_MUTTON));
+        SMELTIES.put(Material.CHORUS_FRUIT, new ItemStack(Material.CHORUS_FRUIT_POPPED, 2));
+    }
 
     private void initRecipes() {
     }
@@ -166,6 +217,15 @@ public class BlastFurnace implements Listener, PluginUtility {
         }
     }
 
+    private ItemStack createSlag() {
+        ItemStack slag = new ItemStack(Material.SULPHUR, 1);
+        ItemMeta meta = slag.getItemMeta();
+        meta.setDisplayName("Slag");
+        meta.setLore(Arrays.asList("Waste from Blast Furnace smelting."));
+        slag.setItemMeta(meta);
+        return slag;
+    }
+
     private class Structure {
 
         private final ArmorStand stand;
@@ -184,7 +244,14 @@ public class BlastFurnace implements Listener, PluginUtility {
         private InventoryHolder fuel;
         private ArmorStand fuelTag;
 
+        private ArmorStand fuelGauge;
 
+        private int fuelLevel = 0;
+
+        private Material smeltee = null;
+        private ItemStack smeltend = null;
+
+        private int smeltTime = 0;
 
         public Structure(ArmorStand stand) {
             this.stand = stand;
@@ -203,6 +270,11 @@ public class BlastFurnace implements Listener, PluginUtility {
             plugin.getLogger().info("output: " + output);
             plugin.getLogger().info("slag: " + slag);
             plugin.getLogger().info("fuel: " + fuel);
+
+            l = stand.getLocation().add(0, -3, 0);
+            fuelGauge = createTag(l, "Fuel: 0");
+            fuelLevel = Integer.parseInt(fuelGauge.getCustomName().substring(6));
+            plugin.getLogger().info("fuellevel: " + fuelLevel);
         }
 
         private void detectChest(Location l, int x, int z) {
@@ -267,25 +339,56 @@ public class BlastFurnace implements Listener, PluginUtility {
                 fuelTag.remove();
                 fuelTag = null;
             }
+            if (fuelGauge != null) {
+                fuelGauge.remove();
+                fuelGauge = null;
+            }
+        }
+
+        private void setFuelLevel(int level) {
+            fuelLevel = level;
+            fuelGauge.setCustomName("Fuel: " + fuelLevel);
         }
         public void update() {
-            int count = 0;
-            for (ItemStack i: fuel.getInventory().getContents()) {
-                if (i != null) {
-                    if (i.getType() == Material.FIREBALL) {
-                        count += i.getAmount();
-                    }
+            if (fuelLevel < 128) {
+                int idx = fuel.getInventory().first(Material.FIREBALL);
+                if (idx >= 0) {
+                    setFuelLevel(fuelLevel+1);
+                    ItemStack charge = fuel.getInventory().getContents()[idx];
+                    charge.setAmount(charge.getAmount()-1);
                 }
             }
-            Location l = stand.getLocation().add(0, -2, 0);
-            if (count == 0) {
-                l.getBlock().setType(Material.AIR);
-            } else if (count >= 128) {
-                l.getBlock().setType(Material.STATIONARY_LAVA);
-            } else {
-                int level = 7 - count / 16;
-                l.getBlock().setType(Material.LAVA, false);
-                l.getBlock().setData((byte) level, false);
+
+            if (smeltee != null) {
+                Location loc =  stand.getLocation().add(0, -1.5, 0);
+                loc.getWorld().spigot().playEffect(loc, Effect.FLAME, 0, 0, 0.3f, 0.25f, 0.3f, 0.01f, 50, 64);
+                smeltTime++;
+                if (smeltTime > 20) {
+                    Log.info("Smelting of %s into %s finished.", smeltee, smeltend.getType());
+                    stand.getWorld().playSound(stand.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, 1, 0);
+                    output.getInventory().addItem(smeltend);
+                    slag.getInventory().addItem(createSlag());
+                    setFuelLevel(fuelLevel-1);
+                    smeltee = null;
+                    smeltend = null;
+                } else {
+                    stand.getWorld().playSound(stand.getLocation(), Sound.BLOCK_FIRE_EXTINGUISH, 0.1f, 0);
+                }
+            } else if (fuelLevel > 0) {
+                for (ItemStack item: input.getInventory().getContents()) {
+                    if (item == null) {
+                        continue;
+                    }
+                    smeltend = SMELTIES.get(item.getType());
+                    if (smeltend != null) {
+                        smeltee = item.getType();
+                        item.setAmount(item.getAmount() - 1);
+                        Log.info("Smelting of %s into %s started.", smeltee, smeltend.getType());
+                        smeltTime = 0;
+                        stand.getWorld().playSound(stand.getLocation(), Sound.ITEM_FIRECHARGE_USE, 1, 0);
+                        break;
+                    }
+                }
             }
         }
 
