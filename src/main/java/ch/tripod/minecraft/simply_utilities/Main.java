@@ -49,6 +49,7 @@ public class Main extends JavaPlugin {
         addUtil(new Breakers());
         addUtil(new AdvancedEChest());
         addUtil(new EMC());
+        addUtil(new ProjectileShield());
 
         createRecipes();
 
