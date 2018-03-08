@@ -18,8 +18,7 @@ package ch.tripod.minecraft.simply_utilities;
 
 import org.bukkit.*;
 import org.bukkit.block.Block;
-import org.bukkit.entity.ArmorStand;
-import org.bukkit.entity.Player;
+import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
@@ -51,6 +50,10 @@ public class ProjectileShield implements Listener, PluginUtility {
     private BukkitTask task;
 
     private HashMap<String, Shield> shields = new HashMap<>();
+
+    public static boolean isProjectile(Entity e) {
+        return (e instanceof Projectile);
+    }
 
     public void enable(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -189,38 +192,63 @@ public class ProjectileShield implements Listener, PluginUtility {
 
         private final ArmorStand stand;
 
+        private final Location center;
+
         private final String key;
 
-        private int radius = 3;
+        private int radius = 5;
+
+        private int radius2 = 25;
 
         private Shield(ArmorStand stand) {
             this.stand = stand;
             key = getKey(stand.getLocation());
+            this.center = stand.getLocation().add(0.5, 0.5, 0.5);
         }
 
         private void update() {
-            Location loc = stand.getLocation();
-            loc.add(0, 0.5, 0);
-
             // play effect
-            float red = 0f;
-            float green = 1f;
-            float blue = 0f;
-            for (int n = 0; n < 50; n++) {
+            int num = 100;
+            int max = 1000;
+            while (num > 0 && max > 0) {
                 double ph = Math.random() * Math.PI * 2.0;
                 double th = Math.random() * Math.PI;
                 double sp = Math.sin(ph);
                 double cp = Math.cos(ph);
                 double st = Math.sin(th);
                 double ct = Math.cos(th);
-                Location l = loc.clone();
+                Location l = center.clone();
                 l.add(radius * sp * ct,
                         radius * sp * st,
                         radius * cp);
-//                loc.getWorld().spigot().playEffect(l, Effect.COLOURED_DUST, 0, 1, red, green, blue, 1, 0, 64);
-                loc.getWorld().spawnParticle(Particle.END_ROD, l, 1, 0, 0, 0, 0);
+                boolean draw = true;
+                for (Shield s: shields.values()) {
+                    if (s != this && s.isInside(l)) {
+                        draw = false;
+                        break;
+                    }
+                }
+
+                if (draw) {
+                    center.getWorld().spawnParticle(Particle.END_ROD, l, 1, 0, 0, 0, 0);
+                    num--;
+                }
+                max--;
             }
 
+            for (Entity e: center.getWorld().getNearbyEntities(center, radius, radius, radius)) {
+                if (isProjectile(e) && isInside(e.getLocation())) {
+                    Vector n = center.toVector().subtract(e.getLocation().toVector()).normalize();
+                    Vector v = e.getVelocity();
+                    double d = -v.dot(n) * 2;
+                    Vector r = n.multiply(d).add(e.getVelocity());
+                    e.setVelocity(r);
+                }
+            }
+        }
+
+        public boolean isInside(Location l) {
+            return l.distanceSquared(center) < radius2;
         }
 
         public Block getBlock() {
