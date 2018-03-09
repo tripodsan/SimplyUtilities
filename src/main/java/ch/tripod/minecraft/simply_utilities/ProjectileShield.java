@@ -34,9 +34,7 @@ import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.EulerAngle;
 import org.bukkit.util.Vector;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 
 /**
  * {@code ExampleListener}...
@@ -52,7 +50,7 @@ public class ProjectileShield implements Listener, PluginUtility {
     private HashMap<String, Shield> shields = new HashMap<>();
 
     public static boolean isProjectile(Entity e) {
-        return (e instanceof Projectile);
+        return (e instanceof Projectile) || e instanceof TNTPrimed;
     }
 
     public void enable(JavaPlugin plugin) {
@@ -200,10 +198,27 @@ public class ProjectileShield implements Listener, PluginUtility {
 
         private int radius2 = 25;
 
+        class Hit {
+            private Location pos;
+
+            private double r = 1;
+
+            public Hit(Location pos) {
+                this.pos = pos;
+            }
+
+            public boolean isInside(Location l) {
+                return pos.distanceSquared(l) < r*r;
+            }
+
+        }
+        private List<Hit> hits = new LinkedList<>();
+
         private Shield(ArmorStand stand) {
             this.stand = stand;
             key = getKey(stand.getLocation());
-            this.center = stand.getLocation().add(0.5, 0.5, 0.5);
+            Location l = stand.getLocation();
+            this.center = new Location(l.getWorld(), l.getBlockX(), l.getBlockY(), l.getBlockZ()).add(0.5, 0.5, 0.5);
         }
 
         private void update() {
@@ -230,7 +245,18 @@ public class ProjectileShield implements Listener, PluginUtility {
                 }
 
                 if (draw) {
-                    center.getWorld().spawnParticle(Particle.END_ROD, l, 1, 0, 0, 0, 0);
+                    boolean isHit = false;
+                    for (Hit h: hits) {
+                        if (h.isInside(l)) {
+                            isHit = true;
+                            break;
+                        }
+                    }
+                    if (isHit) {
+                        center.getWorld().spigot().playEffect(l, Effect.HEART, 1, 0, 0, 0, 0, 0, 1, 64);
+                    } else {
+                        center.getWorld().spawnParticle(Particle.END_ROD, l, 1, 0, 0, 0, 0);
+                    }
                     num--;
                 }
                 max--;
@@ -243,6 +269,16 @@ public class ProjectileShield implements Listener, PluginUtility {
                     double d = -v.dot(n) * 2;
                     Vector r = n.multiply(d).add(e.getVelocity());
                     e.setVelocity(r);
+                    hits.add(new Hit(e.getLocation().clone()));
+                }
+            }
+
+            Iterator<Hit> iter = hits.iterator();
+            while (iter.hasNext()) {
+                Hit h = iter.next();
+                h.r += 0.05;
+                if (h.r > 5) {
+                    iter.remove();
                 }
             }
         }
