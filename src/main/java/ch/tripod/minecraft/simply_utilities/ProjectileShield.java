@@ -34,6 +34,7 @@ import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.EulerAngle;
 import org.bukkit.util.Vector;
 
+import javax.xml.stream.events.EntityReference;
 import java.util.*;
 
 /**
@@ -186,6 +187,24 @@ public class ProjectileShield implements Listener, PluginUtility {
         }
     }
 
+    class Hit {
+        private Location pos;
+
+        private double r = 1;
+
+        public Hit(Location pos) {
+            this.pos = pos;
+        }
+
+        public boolean isInside(Location l) {
+            double d = pos.distanceSquared(l);
+            double r2 = r*r;
+            return d < r2 && d > (r2-7);
+        }
+    }
+
+    private List<Hit> hits = new LinkedList<>();
+
     private class Shield {
 
         private final ArmorStand stand;
@@ -198,22 +217,6 @@ public class ProjectileShield implements Listener, PluginUtility {
 
         private int radius2 = 25;
 
-        class Hit {
-            private Location pos;
-
-            private double r = 1;
-
-            public Hit(Location pos) {
-                this.pos = pos;
-            }
-
-            public boolean isInside(Location l) {
-                return pos.distanceSquared(l) < r*r;
-            }
-
-        }
-        private List<Hit> hits = new LinkedList<>();
-
         private Shield(ArmorStand stand) {
             this.stand = stand;
             key = getKey(stand.getLocation());
@@ -221,30 +224,65 @@ public class ProjectileShield implements Listener, PluginUtility {
             this.center = new Location(l.getWorld(), l.getBlockX(), l.getBlockY(), l.getBlockZ()).add(0.5, 0.5, 0.5);
         }
 
-        private void update() {
-            // play effect
-            int num = 100;
-            int max = 1000;
-            while (num > 0 && max > 0) {
-                double ph = Math.random() * Math.PI * 2.0;
-                double th = Math.random() * Math.PI;
-                double sp = Math.sin(ph);
-                double cp = Math.cos(ph);
-                double st = Math.sin(th);
-                double ct = Math.cos(th);
-                Location l = center.clone();
-                l.add(radius * sp * ct,
-                        radius * sp * st,
-                        radius * cp);
-                boolean draw = true;
-                for (Shield s: shields.values()) {
-                    if (s != this && s.isInside(l)) {
-                        draw = false;
-                        break;
-                    }
-                }
+        private Location polarToLocation(double ph, double th) {
+            double sp = Math.sin(ph);
+            double cp = Math.cos(ph);
+            double st = Math.sin(th);
+            double ct = Math.cos(th);
+            Location l = center.clone();
+            l.add(radius * sp * ct,
+                    radius * sp * st,
+                    radius * cp);
+            return l;
+        }
 
-                if (draw) {
+        private void update(Set<Entity> projectiles) {
+            // play effect
+//            int num = 100;
+//            int max = 1000;
+//            while (num > 0 && max > 0) {
+//                double ph = Math.random() * Math.PI * 2.0;
+//                double th = Math.random() * Math.PI;
+//                Location l = polarToLocation(ph, th);
+//                boolean draw = true;
+//                for (Shield s: shields.values()) {
+//                    if (s != this && s.isInside(l)) {
+//                        draw = false;
+//                        break;
+//                    }
+//                }
+//
+//                if (draw) {
+//                    boolean isHit = false;
+//                    for (Hit h: hits) {
+//                        if (h.isInside(l)) {
+//                            isHit = true;
+//                            break;
+//                        }
+//                    }
+//                    if (isHit) {
+//                        center.getWorld().spigot().playEffect(l, Effect.COLOURED_DUST, 1, 0, 0.1f, 0.1f, 0.1f, 0, 10, 64);
+//                    } else {
+//                        center.getWorld().spawnParticle(Particle.END_ROD, l, 1, 0, 0, 0, 0);
+//                    }
+//                    num--;
+//                }
+//                max--;
+//            }
+
+            for (double ph = 0; ph < Math.PI * 2; ph += 0.1) {
+                for (double th = 0; th < Math.PI; th += 0.2) {
+                    Location l = polarToLocation(ph, th);
+                    boolean draw = true;
+                    for (Shield s: shields.values()) {
+                        if (s != this && s.isInside(l)) {
+                            draw = false;
+                            break;
+                        }
+                    }
+                    if (!draw) {
+                        continue;
+                    }
                     boolean isHit = false;
                     for (Hit h: hits) {
                         if (h.isInside(l)) {
@@ -253,31 +291,26 @@ public class ProjectileShield implements Listener, PluginUtility {
                         }
                     }
                     if (isHit) {
-                        center.getWorld().spigot().playEffect(l, Effect.HEART, 1, 0, 0, 0, 0, 0, 1, 64);
+                        center.getWorld().spigot().playEffect(l, Effect.COLOURED_DUST, 1, 0, 0.1f, 0.1f, 0.1f, 0, 10, 64);
                     } else {
                         center.getWorld().spawnParticle(Particle.END_ROD, l, 1, 0, 0, 0, 0);
                     }
-                    num--;
+
                 }
-                max--;
             }
 
-            for (Entity e: center.getWorld().getNearbyEntities(center, radius, radius, radius)) {
-                if (isProjectile(e) && isInside(e.getLocation())) {
+            Iterator<Entity> iter = projectiles.iterator();
+            while (iter.hasNext()) {
+                Entity e = iter.next();
+                if (isInside(e.getLocation())) {
                     Vector n = center.toVector().subtract(e.getLocation().toVector()).normalize();
+                    Vector hit = n.clone().multiply(-radius).add(center.toVector());
                     Vector v = e.getVelocity();
                     double d = -v.dot(n) * 2;
                     Vector r = n.multiply(d).add(e.getVelocity());
                     e.setVelocity(r);
-                    hits.add(new Hit(e.getLocation().clone()));
-                }
-            }
-
-            Iterator<Hit> iter = hits.iterator();
-            while (iter.hasNext()) {
-                Hit h = iter.next();
-                h.r += 0.05;
-                if (h.r > 5) {
+                    hits.add(new Hit(new Location(center.getWorld(), hit.getX(), hit.getY(), hit.getZ())));
+//                    hits.add(new Hit(e.getLocation().clone()));
                     iter.remove();
                 }
             }
@@ -298,11 +331,27 @@ public class ProjectileShield implements Listener, PluginUtility {
         @Override
         public void run() {
             for (World w : plugin.getServer().getWorlds()) {
+                Set<Entity> projectiles = new HashSet<>();
+                for (Entity e: w.getEntities()) {
+                    if (isProjectile(e)) {
+                        projectiles.add(e);
+                    }
+                }
+
                 for (ArmorStand a : w.getEntitiesByClass(ArmorStand.class)) {
                     Shield l = getShield(a);
                     if (l != null) {
-                        l.update();
+                        l.update(projectiles);
                     }
+                }
+            }
+
+            Iterator<Hit> iter = hits.iterator();
+            while (iter.hasNext()) {
+                Hit h = iter.next();
+                h.r += 0.3;
+                if (h.r > 5) {
+                    iter.remove();
                 }
             }
 
