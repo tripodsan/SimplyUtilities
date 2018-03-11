@@ -130,9 +130,13 @@ public class StructureVerifier {
     }
 
     public boolean verify(Player p, Location loc, int sy, Location forcedAirLocation) {
-        int x0 = loc.getBlockX() - dx / 2;
+        return verify(p, loc, dx / 2, sy, dz / 2, forcedAirLocation);
+    }
+
+    public boolean verify(Player p, Location loc, int sx, int sy, int sz, Location forcedAirLocation) {
+        int x0 = loc.getBlockX() - sx;
         int y0 = loc.getBlockY() - sy;
-        int z0 = loc.getBlockZ() - dz / 2;
+        int z0 = loc.getBlockZ() - sz;
         int i = 0;
         for (int y = y0; y <= y0 + dy; y++) {
             for (int x = x0; x <= x0 + dx; x++) {

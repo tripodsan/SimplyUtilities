@@ -50,6 +50,7 @@ public class Main extends JavaPlugin {
         addUtil(new AdvancedEChest());
         addUtil(new EMC());
         addUtil(new ProjectileShield());
+        addUtil(new Crusher());
 
         createRecipes();
 
