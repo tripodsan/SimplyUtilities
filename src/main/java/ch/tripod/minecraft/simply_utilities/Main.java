@@ -51,6 +51,8 @@ public class Main extends JavaPlugin {
         addUtil(new EMC());
         addUtil(new ProjectileShield());
         addUtil(new Crusher());
+        addUtil(new Incinerator());
+
 
         createRecipes();
 
