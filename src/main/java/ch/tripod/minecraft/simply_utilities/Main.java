@@ -52,6 +52,8 @@ public class Main extends JavaPlugin {
         addUtil(new ProjectileShield());
         addUtil(new Crusher());
         addUtil(new Incinerator());
+        addUtil(new ReArmourer());
+        addUtil(new DeArmourer());
 
 
         createRecipes();
