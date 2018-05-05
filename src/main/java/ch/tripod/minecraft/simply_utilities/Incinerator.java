@@ -26,6 +26,10 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.inventory.CraftItemEvent;
+import org.bukkit.event.inventory.FurnaceBurnEvent;
+import org.bukkit.event.inventory.PrepareItemCraftEvent;
+import org.bukkit.inventory.CraftingInventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -43,6 +47,8 @@ import java.util.HashMap;
 public class Incinerator implements Listener, PluginUtility {
 
     private final static String STRUCTURE_PREFIX = "incinerator-";
+
+    private final static String CARBON_TOKEN_TITLE = "Carbon Token";
 
     private JavaPlugin plugin;
 
@@ -72,6 +78,15 @@ public class Incinerator implements Listener, PluginUtility {
         }
     }
 
+    private ItemStack createCarbonToken(int burnTime) {
+        ItemStack token = new ItemStack(Material.COAL, 1);
+        ItemMeta meta = token.getItemMeta();
+        meta.setDisplayName(CARBON_TOKEN_TITLE);
+        meta.setLore(Arrays.asList("Output from incinerator; burns for " + burnTime + " ticks."));
+        token.setItemMeta(meta);
+        return token;
+    }
+
     private class StructureScanner implements Runnable {
 
         @Override
@@ -98,6 +113,28 @@ public class Incinerator implements Listener, PluginUtility {
     }
 
     @EventHandler
+    public void onFurnaceBurnEvent(FurnaceBurnEvent evt) {
+        ItemStack s = evt.getFuel();
+        int time = getBurnTime(s);
+        if (time > 0) {
+            Log.info("set furnace burn time to ", time);
+            evt.setBurnTime(time);
+        }
+    }
+
+    public int getBurnTime(ItemStack s) {
+        if (s == null) {
+            return -1;
+        }
+        ItemMeta m = s.getItemMeta();
+        if (m != null && m.hasLore() && CARBON_TOKEN_TITLE.equals(m.getDisplayName())) {
+            String[] lore = m.getLore().get(0).split(" ");
+            return Integer.parseInt(lore[5]);
+        }
+        return -1;
+    }
+
+    @EventHandler
     public void onBlockBreak(BlockBreakEvent event) {
         Player player = event.getPlayer();
         if(event.getBlock().getType() == Material.MAGMA) {
@@ -108,6 +145,54 @@ public class Incinerator implements Listener, PluginUtility {
             }
         }
     }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onCraftTokenEvent(PrepareItemCraftEvent event) {
+        CraftingInventory i = event.getInventory();
+        int totalBurnTime = 0;
+        for (ItemStack s: i.getMatrix()) {
+            if (s == null) {
+                continue;
+            }
+            int b = getBurnTime(s);
+            if (b < 0) {
+                return;
+            }
+            totalBurnTime += b;
+        }
+        Log.info("total burntime: %d", totalBurnTime);
+        switch (totalBurnTime) {
+            case 5:
+            case 10:
+            case 50:
+            case 100:
+            case 500:
+            case 1000:
+            case 5000:
+            case 10000:
+            case 50000:
+            case 100000:
+            case 500000:
+            case 1000000:
+                i.setResult(createCarbonToken(totalBurnTime));
+        }
+    }
+
+    @EventHandler
+    public void onCraftItem(CraftItemEvent evt) {
+        CraftingInventory i = evt.getInventory();
+        Log.info("crafting? %s", i.getResult());
+        if (getBurnTime(i.getResult()) < 0) {
+            return;
+        }
+        Log.info("Crafting new carbon token with " + getBurnTime(i.getResult()));
+        ItemStack[] m = i.getMatrix();
+        for (ItemStack s: m) {
+            s.setAmount(s.getAmount() - 1);
+        }
+        i.setMatrix(m);
+    }
+
 
     private String getKey(Location loc) {
         return STRUCTURE_PREFIX + loc.getBlockX() + ":" + loc.getBlockY() + ":" + loc.getBlockZ();
@@ -165,15 +250,6 @@ public class Incinerator implements Listener, PluginUtility {
         } else {
             return null;
         }
-    }
-
-    private ItemStack createSlag() {
-        ItemStack slag = new ItemStack(Material.SULPHUR, 1);
-        ItemMeta meta = slag.getItemMeta();
-        meta.setDisplayName("Slag");
-        meta.setLore(Arrays.asList("Waste from Blast Furnace smelting."));
-        slag.setItemMeta(meta);
-        return slag;
     }
 
     private class Structure {
@@ -265,7 +341,7 @@ public class Incinerator implements Listener, PluginUtility {
                         s.setAmount(s.getAmount() - 1);
                         burnee = (Item) e;
                         //e.remove();
-                        burnend = new ItemStack(Material.COAL, 1);
+                        burnend = createCarbonToken(5);
 
                         Log.info("Incineration of %s into %s started.", burnee, burnend.getType());
                         burnTime = 0;
