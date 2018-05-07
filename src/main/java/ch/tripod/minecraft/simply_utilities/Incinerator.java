@@ -29,9 +29,7 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.inventory.CraftItemEvent;
 import org.bukkit.event.inventory.FurnaceBurnEvent;
 import org.bukkit.event.inventory.PrepareItemCraftEvent;
-import org.bukkit.inventory.CraftingInventory;
-import org.bukkit.inventory.InventoryHolder;
-import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.*;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.material.MaterialData;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -40,6 +38,8 @@ import org.bukkit.util.Vector;
 
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * {@code Main}...
@@ -58,7 +58,94 @@ public class Incinerator implements Listener, PluginUtility {
 
     private HashMap<String, Structure> structures = new HashMap<>();
 
+    private final static Map<Material, Integer> INCINERATIES = new HashMap<>();
+    static {
+        INCINERATIES.put(Material.LAVA_BUCKET, 20005);
+        INCINERATIES.put(Material.COAL_BLOCK, 16000);
+        INCINERATIES.put(Material.BLAZE_ROD, 2400);
+        INCINERATIES.put(Material.COAL, 1600);
+        INCINERATIES.put(Material.BOAT, 400);
+        INCINERATIES.put(Material.BOAT_ACACIA, 400);
+        INCINERATIES.put(Material.BOAT_BIRCH, 400);
+        INCINERATIES.put(Material.BOAT_DARK_OAK, 400);
+        INCINERATIES.put(Material.BOAT_JUNGLE, 400);
+        INCINERATIES.put(Material.BOAT_SPRUCE, 400);
+        INCINERATIES.put(Material.LOG, 300);
+        INCINERATIES.put(Material.LOG_2, 300);
+        INCINERATIES.put(Material.WOOD, 300);
+        INCINERATIES.put(Material.WOOD_PLATE, 300);
+        INCINERATIES.put(Material.FENCE, 300);
+        INCINERATIES.put(Material.JUNGLE_FENCE, 300);
+        INCINERATIES.put(Material.SPRUCE_FENCE, 300);
+        INCINERATIES.put(Material.DARK_OAK_FENCE, 300);
+        INCINERATIES.put(Material.ACACIA_FENCE, 300);
+        INCINERATIES.put(Material.BIRCH_FENCE, 300);
+        INCINERATIES.put(Material.FENCE_GATE, 300);
+        INCINERATIES.put(Material.JUNGLE_FENCE_GATE, 300);
+        INCINERATIES.put(Material.SPRUCE_FENCE_GATE, 300);
+        INCINERATIES.put(Material.DARK_OAK_FENCE_GATE, 300);
+        INCINERATIES.put(Material.ACACIA_FENCE_GATE, 300);
+        INCINERATIES.put(Material.BIRCH_FENCE_GATE, 300);
+        INCINERATIES.put(Material.WOOD_STAIRS, 300);
+        INCINERATIES.put(Material.JUNGLE_WOOD_STAIRS, 300);
+        INCINERATIES.put(Material.SPRUCE_WOOD_STAIRS, 300);
+        INCINERATIES.put(Material.DARK_OAK_STAIRS, 300);
+        INCINERATIES.put(Material.ACACIA_STAIRS, 300);
+        INCINERATIES.put(Material.BIRCH_WOOD_STAIRS, 300);
+        INCINERATIES.put(Material.TRAP_DOOR, 300);
+        INCINERATIES.put(Material.WORKBENCH, 300);
+        INCINERATIES.put(Material.BOOKSHELF, 300);
+        INCINERATIES.put(Material.CHEST, 300);
+        INCINERATIES.put(Material.TRAPPED_CHEST, 300);
+        INCINERATIES.put(Material.DAYLIGHT_DETECTOR, 300);
+        INCINERATIES.put(Material.JUKEBOX, 300);
+        INCINERATIES.put(Material.NOTE_BLOCK, 300);
+        INCINERATIES.put(Material.HUGE_MUSHROOM_1, 300);
+        INCINERATIES.put(Material.HUGE_MUSHROOM_2, 300);
+        INCINERATIES.put(Material.BANNER, 300);
+        INCINERATIES.put(Material.WOOD_STEP, 150);
+        INCINERATIES.put(Material.BOW, 300);
+        INCINERATIES.put(Material.FISHING_ROD, 300);
+        INCINERATIES.put(Material.LADDER, 300);
+        INCINERATIES.put(Material.WOOD_PICKAXE, 200);
+        INCINERATIES.put(Material.WOOD_SPADE, 200);
+        INCINERATIES.put(Material.WOOD_HOE, 200);
+        INCINERATIES.put(Material.WOOD_AXE, 200);
+        INCINERATIES.put(Material.WOOD_SWORD, 200);
+        INCINERATIES.put(Material.SIGN, 200);
+        INCINERATIES.put(Material.WOODEN_DOOR, 200);
+        INCINERATIES.put(Material.WOOD_DOOR, 200);
+        INCINERATIES.put(Material.JUNGLE_DOOR, 200);
+        INCINERATIES.put(Material.SPRUCE_DOOR, 200);
+        INCINERATIES.put(Material.DARK_OAK_DOOR, 200);
+        INCINERATIES.put(Material.ACACIA_DOOR, 200);
+        INCINERATIES.put(Material.BIRCH_DOOR, 200);
+        INCINERATIES.put(Material.BOWL, 100);
+        INCINERATIES.put(Material.SAPLING, 100);
+        INCINERATIES.put(Material.STICK, 100);
+        INCINERATIES.put(Material.WOOL, 100);
+        INCINERATIES.put(Material.WOOD_BUTTON, 100);
+        INCINERATIES.put(Material.CARPET, 67);
+    }
+
+    private static final int[] TOKEN_VALUES = {1000000, 500000, 100000, 50000, 10000, 5000, 1000, 500, 100, 50, 10, 5, 1};
+
     private void initRecipes() {
+        {
+            ShapelessRecipe recp = new ShapelessRecipe(new NamespacedKey(plugin, "coal_token_i"), createCarbonToken(3));
+            recp.addIngredient(1, Material.COAL);
+            plugin.getServer().addRecipe(recp);
+        }
+        {
+            ShapelessRecipe recp = new ShapelessRecipe(new NamespacedKey(plugin, "coal_token_v"), createCarbonToken(7));
+            recp.addIngredient(5, Material.COAL);
+            plugin.getServer().addRecipe(recp);
+        }
+        {
+            ShapelessRecipe recp = new ShapelessRecipe(new NamespacedKey(plugin, "coal_token_x"), createCarbonToken(13));
+            recp.addIngredient(2, Material.COAL);
+            plugin.getServer().addRecipe(recp);
+        }
     }
 
     private BukkitTask task;
@@ -78,7 +165,7 @@ public class Incinerator implements Listener, PluginUtility {
         }
     }
 
-    private ItemStack createCarbonToken(int burnTime) {
+    private static ItemStack createCarbonToken(int burnTime) {
         ItemStack token = new ItemStack(Material.COAL, 1);
         ItemMeta meta = token.getItemMeta();
         meta.setDisplayName(CARBON_TOKEN_TITLE);
@@ -117,7 +204,7 @@ public class Incinerator implements Listener, PluginUtility {
         ItemStack s = evt.getFuel();
         int time = getBurnTime(s);
         if (time > 0) {
-            Log.info("set furnace burn time to ", time);
+            Log.info("set furnace burn time to %d", time);
             evt.setBurnTime(time);
         }
     }
@@ -150,6 +237,7 @@ public class Incinerator implements Listener, PluginUtility {
     public void onCraftTokenEvent(PrepareItemCraftEvent event) {
         CraftingInventory i = event.getInventory();
         int totalBurnTime = 0;
+        int count = 0;
         for (ItemStack s: i.getMatrix()) {
             if (s == null) {
                 continue;
@@ -158,6 +246,7 @@ public class Incinerator implements Listener, PluginUtility {
             if (b < 0) {
                 return;
             }
+            count++;
             totalBurnTime += b;
         }
         Log.info("total burntime: %d", totalBurnTime);
@@ -174,25 +263,24 @@ public class Incinerator implements Listener, PluginUtility {
             case 100000:
             case 500000:
             case 1000000:
-                i.setResult(createCarbonToken(totalBurnTime));
+                ItemStack result;
+                if (count == 1) {
+                    if (String.valueOf(totalBurnTime).charAt(0) == '5') {
+                        result = createCarbonToken(totalBurnTime / 5);
+                        result.setAmount(5);
+                    } else {
+                        result = createCarbonToken(totalBurnTime / 2);
+                        result.setAmount(2);
+                    }
+                } else {
+                    result = createCarbonToken(totalBurnTime);
+                }
+                i.setResult(result);
+                break;
+            default:
+                i.setResult(null);
         }
     }
-
-    @EventHandler
-    public void onCraftItem(CraftItemEvent evt) {
-        CraftingInventory i = evt.getInventory();
-        Log.info("crafting? %s", i.getResult());
-        if (getBurnTime(i.getResult()) < 0) {
-            return;
-        }
-        Log.info("Crafting new carbon token with " + getBurnTime(i.getResult()));
-        ItemStack[] m = i.getMatrix();
-        for (ItemStack s: m) {
-            s.setAmount(s.getAmount() - 1);
-        }
-        i.setMatrix(m);
-    }
-
 
     private String getKey(Location loc) {
         return STRUCTURE_PREFIX + loc.getBlockX() + ":" + loc.getBlockY() + ":" + loc.getBlockZ();
@@ -258,11 +346,11 @@ public class Incinerator implements Listener, PluginUtility {
 
         private final String key;
 
-        private InventoryHolder output;
         private ArmorStand outputTag;
 
         private Item burnee = null;
-        private ItemStack burnend = null;
+
+        private int fueltime = 0;
 
         private int burnTime = 0;
 
@@ -270,20 +358,23 @@ public class Incinerator implements Listener, PluginUtility {
             this.stand = stand;
             this.key = getKey(stand.getLocation());
 
+//            outputTag = createTag(stand.getLocation(), "Output");
+
+        }
+
+        private InventoryHolder getOutput() {
             for (int d = 0; d < 4; d++) {
                 int dx = d < 2 ? d%2 * 4 - 2 : 0;
                 int dz = d >=2 ? d%2 * 4 - 2 : 0;
 
                 Block chest = stand.getLocation().add(dx, 1, dz).getBlock();
-                Log.info("chest: %s", chest);
+//                Log.info("chest: %s", chest);
                 if (chest.getState() instanceof InventoryHolder) {
                     Log.info("found output chest: %s", chest);
-                    output = (InventoryHolder) chest.getState();
-                    break;
+                    return (InventoryHolder) chest.getState();
                 }
             }
-//            outputTag = createTag(stand.getLocation(), "Output");
-
+            return null;
         }
 
         private ArmorStand createTag(Location l, String title) {
@@ -317,17 +408,26 @@ public class Incinerator implements Listener, PluginUtility {
                 loc.getWorld().spigot().playEffect(loc, Effect.LAVA_POP, 0, 0, 0.1f, 0.1f, 0.1f, 1f, 10, 20);
                 burnTime++;
                 if (burnTime > 20) {
-                    Log.info("Incineration of %s into %s finished.", burnee, burnend.getType());
+                    Log.info("Incineration of %s into token of value %d finished.", burnee, fueltime);
                     stand.getWorld().playSound(stand.getLocation(), Sound.BLOCK_ANVIL_PLACE, 1, 2);
-                    if (output == null) {
-                        Location dropLoc = stand.getLocation().add(0, 2, 0);
-                        Item dropped = dropLoc.getWorld().dropItem(dropLoc, burnend);
-                        dropped.setVelocity(new Vector(Math.random()-0.5, 1, Math.random()-0.5));
-                    } else {
-                        output.getInventory().addItem(burnend);
+                    InventoryHolder output = getOutput();
+                    while (fueltime > 0) {
+                        for (int b: TOKEN_VALUES) {
+                            if (fueltime >= b) {
+                                fueltime -= b;
+                                ItemStack token = createCarbonToken(b);
+                                if (output == null) {
+                                    Location dropLoc = stand.getLocation().add(0, 2, 0);
+                                    Item dropped = dropLoc.getWorld().dropItem(dropLoc, token);
+                                    dropped.setVelocity(new Vector(Math.random()-0.5, 1, Math.random()-0.5));
+                                } else {
+                                    output.getInventory().addItem(token);
+                                }
+                                break;
+                            }
+                        }
                     }
                     burnee = null;
-                    burnend = null;
                 } else {
                     stand.getWorld().playSound(stand.getLocation(), Sound.ITEM_FIRECHARGE_USE, 0.5f, 1.5f);
                 }
@@ -338,12 +438,11 @@ public class Incinerator implements Listener, PluginUtility {
                         if (s.getType() == Material.COAL) {
                             continue;
                         }
+                        fueltime = INCINERATIES.getOrDefault(s.getType(), 5);
+                        Log.info("Incineration of %s into token of value %d started.", s.getType(), fueltime);
+
                         s.setAmount(s.getAmount() - 1);
                         burnee = (Item) e;
-                        //e.remove();
-                        burnend = createCarbonToken(5);
-
-                        Log.info("Incineration of %s into %s started.", burnee, burnend.getType());
                         burnTime = 0;
                         stand.getWorld().playSound(stand.getLocation(), Sound.BLOCK_ANVIL_LAND, 0.1f, 0.5f);
                         break;
