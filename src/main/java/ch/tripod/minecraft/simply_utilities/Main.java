@@ -54,6 +54,7 @@ public class Main extends JavaPlugin {
         addUtil(new Incinerator());
         addUtil(new ReArmourer());
         addUtil(new DeArmourer());
+        addUtil(new Stargate());
 
 
         createRecipes();
