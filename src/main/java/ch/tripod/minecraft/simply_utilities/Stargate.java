@@ -20,6 +20,7 @@ import org.bukkit.Effect;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
+import org.bukkit.block.Block;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -64,7 +65,7 @@ public class Stargate implements Listener, PluginUtility {
     public void disable() {
         if (task != null) {
             task.cancel();
-            task  = null;
+            task = null;
         }
     }
 
@@ -72,13 +73,21 @@ public class Stargate implements Listener, PluginUtility {
 
         @Override
         public void run() {
+            for (World w : plugin.getServer().getWorlds()) {
+                for (ArmorStand a : w.getEntitiesByClass(ArmorStand.class)) {
+                    Structure l = getStructure(a);
+                    if (l != null) {
+                        l.update();
+                    }
+                }
+            }
         }
     }
 
     @EventHandler
-    public void onBlockPlace(BlockPlaceEvent event){
+    public void onBlockPlace(BlockPlaceEvent event) {
 
-        if(event.getBlock().getType() == Material.ENDER_PORTAL_FRAME) {
+        if (event.getBlock().getType() == Material.ENDER_PORTAL_FRAME) {
             if (verifier.verify(event.getPlayer(), event.getBlock().getLocation(), 0)) {
                 Structure s = createStructure(event.getPlayer(), event.getBlock().getLocation(), event.getBlock().getState().getData());
             }
@@ -122,9 +131,9 @@ public class Stargate implements Listener, PluginUtility {
         float red = 0f;
         float green = 0.570312f;
         float blue = 0f;
-        for(int i = 0; i <360; i+=5){
+        for (int i = 0; i < 360; i += 5) {
             Location l = loc.clone();
-            l.add(Math.cos(i)*3, 0, Math.sin(i)*3);
+            l.add(Math.cos(i) * 3, 0, Math.sin(i) * 3);
             loc.getWorld().spigot().playEffect(l, Effect.COLOURED_DUST, 0, 1, red, green, blue, 1, 0, 64);
         }
 
@@ -148,7 +157,7 @@ public class Stargate implements Listener, PluginUtility {
     }
 
     private Structure getStructure(World world, String key) {
-        for (ArmorStand a: world.getEntitiesByClass(ArmorStand.class)) {
+        for (ArmorStand a : world.getEntitiesByClass(ArmorStand.class)) {
             if (a.getCustomName().equals(key)) {
                 return structures.computeIfAbsent(key, k -> new Structure(a));
             }
@@ -158,7 +167,7 @@ public class Stargate implements Listener, PluginUtility {
 
     private Structure getStructure(ArmorStand a) {
         String key = a.getCustomName();
-        if (key!=null && key.startsWith(STRUCTURE_PREFIX)) {
+        if (key != null && key.startsWith(STRUCTURE_PREFIX)) {
             return structures.computeIfAbsent(key, k -> new Structure(a));
         } else {
             return null;
@@ -176,11 +185,61 @@ public class Stargate implements Listener, PluginUtility {
 
         private Location center;
 
+        private int timer = 0;
+
+        private int rotation = 0;
+
+        private int direction = 1;
+
+        /**
+         * 5     101
+         * 4   32   23
+         * 3  4       4
+         * 2  4       4
+         * 1 5         5
+         * 0 5    o    5
+         * 1 5         5
+         * 2  4       4
+         * 3  4       4
+         * 4   32   23
+         * 5     101
+         */
+        private int ring[] = {
+                0, 5,
+                1, 5,
+                2, 4,
+                3, 4,
+                4, 3,
+                4, 2,
+                5, 1,
+                5, 0,
+                5, -1,
+                4, -2,
+                4, -3,
+                3, -4,
+                2, -4,
+                1, -5,
+                0, -5,
+                -1, -5,
+                -2, -4,
+                -3, -4,
+                -4, -3,
+                -4, -2,
+                -5, -1,
+                -5, 0,
+                -5, 1,
+                -4, 2,
+                -4, 3,
+                -3, 4,
+                -2, 4,
+                -1, 5
+        };
+
         public Structure(ArmorStand stand) {
             this.stand = stand;
             this.key = getKey(stand.getLocation());
 
-            center = stand.getLocation().add(1, 6, 0);
+            center = stand.getLocation().add(0, 6, 0);
             Vector d1 = new Vector(1, 6, 6);
             Vector d2 = new Vector(1, 6, 6);
             boxMin = center.toVector().subtract(d1);
@@ -192,7 +251,47 @@ public class Stargate implements Listener, PluginUtility {
         }
 
         public boolean isValid(Location forcedAirLocation) {
-            return verifier.verify(null, center, 3, forcedAirLocation);
+            return verifier.verify(null, stand.getLocation(), 0, forcedAirLocation);
+        }
+
+        public void update() {
+            if (++timer < 2) {
+                return;
+            }
+            timer = 0;
+            if (direction > 0) {
+                Block b = getRingBlock(0);
+                Material m0 = b.getType();
+                byte d0 = b.getData();
+                for (int i=0; i < 27; i++) {
+                    b = getRingBlock(i + 1);
+                    setRingBlock(i, b.getType(), b.getData());
+                }
+                setRingBlock(27, m0, d0);
+            } else {
+                Block b = getRingBlock(27);
+                Material m0 = b.getType();
+                byte d0 = b.getData();
+                for (int i=27; i > 0; i--) {
+                    b = getRingBlock(i - 1);
+                    setRingBlock(i, b.getType(), b.getData());
+                }
+                setRingBlock(0, m0, d0);
+            }
+        }
+
+        Block getRingBlock(int n) {
+            Location c = center.clone();
+            return c.add(1, ring[n*2 + 1], ring[n*2]).getBlock();
+        }
+
+        void setRingBlock(int n, Material m, byte d) {
+            Block b = getRingBlock(n);
+            b.setType(m);
+            b.setData(d);
+            b = b.getLocation().add(-2, 0, 0).getBlock();
+            b.setType(m);
+            b.setData(d);
         }
 
         public void destroy() {
