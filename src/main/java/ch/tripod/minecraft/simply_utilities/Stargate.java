@@ -16,22 +16,27 @@
  */
 package ch.tripod.minecraft.simply_utilities;
 
-import org.bukkit.Effect;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.World;
+import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.inventory.InventoryType;
+import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryView;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.material.MaterialData;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
 
+import java.util.Collections;
 import java.util.HashMap;
 
 /**
@@ -44,7 +49,7 @@ public class Stargate implements Listener, PluginUtility {
     private JavaPlugin plugin;
 
     private StructureVerifier verifier = new StructureVerifier("stargate").load(
-            "{\"dx\":2,\"dy\":12,\"dz\":12,\"matrix\":\".....aba..........cdc..........aba........ccefecc......gc...cg......ccefecc.....bhi...ihb....g.......g....bhi...ihb...ch.......hc..g.........g..ch.......hc..cj.......jc..c.........c..cj.......jc.ae.........eac...........cae.........eabf.........fbg...........gbf.........fbae.........eac...........cae.........ea.cj.......jc..c.........c..cj.......jc..ch.......hc..g.........g..ch.......hc...bhi...ihb....g.......g....bhi...ihb.....ccklkcc......gc...cg......ccklkcc........aba..........cgc..........aba.....\",\"map\":{\"k\":{\"mat\":\"STONE\",\"dat\":2},\"b\":{\"mat\":\"GOLD_BLOCK\",\"dat\":0},\"e\":{\"mat\":\"STONE\",\"dat\":4},\"f\":{\"mat\":\"STONE\",\"dat\":3},\"d\":{\"mat\":\"ENDER_PORTAL_FRAME\",\"dat\":2},\"h\":{\"mat\":\"QUARTZ_BLOCK\",\"dat\":1},\"j\":{\"mat\":\"QUARTZ_BLOCK\",\"dat\":2},\".\":{\"mat\":\"AIR\",\"dat\":0},\"c\":{\"mat\":\"SMOOTH_BRICK\",\"dat\":0},\"i\":{\"mat\":\"QUARTZ_BLOCK\",\"dat\":4},\"a\":{\"mat\":\"PRISMARINE\",\"dat\":2},\"l\":{\"mat\":\"REDSTONE_LAMP_OFF\",\"dat\":0},\"g\":{\"mat\":\"PRISMARINE\",\"dat\":0}}}"
+            "{\"dx\":4,\"dy\":12,\"dz\":12,\"matrix\":\".....aba..........aca..........ded..........aca..........aba........dd...dd......ddfgfdd......edhihde......ddfgfdd......dd...dd.....c.......c....cjk...kjc....ehh...hhe....cjk...kjc....c.......c...d.........d..dj.......jd..eh.......he..dj.......jd..d.........d..d.........d..dl.......ld..dh.......hd..dl.......ld..d.........d.a...........aaf.........fadh.........hdaf.........faa...........ab...........bcg.........gceh.........hecg.........gcb...........ba...........aaf.........fadh.........hdaf.........faa...........a.d.........d..dl.......ld..dh.......hd..dl.......ld..d.........d..d.........d..dj.......jd..eh.......he..dj.......jd..d.........d...c.......c....cjk...kjc....ehh...hhe....cjk...kjc....c.......c.....dd...dd......ddmnmdd......edhhhde......ddmnmdd......dd...dd........aba..........aca..........ded..........aca..........aba.....\",\"map\":{\"m\":{\"mat\":\"STONE\",\"dat\":2},\"c\":{\"mat\":\"GOLD_BLOCK\",\"dat\":0},\"f\":{\"mat\":\"STONE\",\"dat\":4},\"g\":{\"mat\":\"STONE\",\"dat\":3},\"j\":{\"mat\":\"QUARTZ_BLOCK\",\"dat\":1},\"i\":{\"mat\":\"ENDER_PORTAL_FRAME\",\"dat\":3},\"l\":{\"mat\":\"QUARTZ_BLOCK\",\"dat\":2},\".\":{\"mat\":\"AIR\",\"dat\":0},\"d\":{\"mat\":\"SMOOTH_BRICK\",\"dat\":0},\"k\":{\"mat\":\"QUARTZ_BLOCK\",\"dat\":4},\"h\":{\"mat\":\"GLASS\",\"dat\":0},\"n\":{\"mat\":\"REDSTONE_BLOCK\",\"dat\":0},\"a\":{\"mat\":\"PRISMARINE\",\"dat\":2},\"b\":{\"mat\":\"REDSTONE_LAMP_OFF\",\"dat\":0},\"e\":{\"mat\":\"PRISMARINE\",\"dat\":0}}}"
     );
 
     private HashMap<String, Structure> structures = new HashMap<>();
@@ -88,7 +93,7 @@ public class Stargate implements Listener, PluginUtility {
     public void onBlockPlace(BlockPlaceEvent event) {
 
         if (event.getBlock().getType() == Material.ENDER_PORTAL_FRAME) {
-            if (verifier.verify(event.getPlayer(), event.getBlock().getLocation(), 0)) {
+            if (verifier.verify(event.getPlayer(), event.getBlock().getLocation(), 1)) {
                 Structure s = createStructure(event.getPlayer(), event.getBlock().getLocation(), event.getBlock().getState().getData());
             }
         }
@@ -111,6 +116,16 @@ public class Stargate implements Listener, PluginUtility {
         }
     }
 
+    @EventHandler
+    public void onPlayerInteract(PlayerInteractEvent event) {
+        if (event.getAction() == Action.RIGHT_CLICK_BLOCK) {
+            Structure a = getStructure(event.getClickedBlock());
+            if (a != null) {
+                a.openInventory(event.getPlayer());
+                event.setCancelled(true);
+            }
+        }
+    }
     private String getKey(Location loc) {
         return STRUCTURE_PREFIX + loc.getBlockX() + ":" + loc.getBlockY() + ":" + loc.getBlockZ();
     }
@@ -156,6 +171,15 @@ public class Stargate implements Listener, PluginUtility {
         return removeAltar(a);
     }
 
+    private Structure getStructure(Block block) {
+        if (block.getType() != Material.ENDER_PORTAL_FRAME) {
+            return null;
+        }
+        String key = getKey(block.getLocation());
+        return getStructure(block.getLocation().getWorld(), key);
+    }
+
+
     private Structure getStructure(World world, String key) {
         for (ArmorStand a : world.getEntitiesByClass(ArmorStand.class)) {
             if (a.getCustomName().equals(key)) {
@@ -171,6 +195,22 @@ public class Stargate implements Listener, PluginUtility {
             return structures.computeIfAbsent(key, k -> new Structure(a));
         } else {
             return null;
+        }
+    }
+
+    private static class BlockInfo {
+        public final Material m;
+
+        public final byte d;
+
+        public BlockInfo(Block b) {
+            this.m = b.getType();
+            this.d = b.getData();
+        }
+
+        public void apply(Block b) {
+            b.setType(m);
+            b.setData(d);
         }
     }
 
@@ -190,6 +230,9 @@ public class Stargate implements Listener, PluginUtility {
         private int rotation = 0;
 
         private int direction = 1;
+
+        private Inventory inventory;
+
 
         /**
          * 5     101
@@ -235,15 +278,21 @@ public class Stargate implements Listener, PluginUtility {
                 -1, 5
         };
 
+        private BlockInfo[] initialRing = new BlockInfo[28];
+
         public Structure(ArmorStand stand) {
             this.stand = stand;
             this.key = getKey(stand.getLocation());
 
-            center = stand.getLocation().add(0, 6, 0);
+            center = stand.getLocation().add(0, 5, 0);
             Vector d1 = new Vector(1, 6, 6);
             Vector d2 = new Vector(1, 6, 6);
             boxMin = center.toVector().subtract(d1);
             boxMax = center.toVector().add(d2);
+
+            for (int i=0; i<28;i++) {
+                initialRing[i] = new BlockInfo(getRingBlock(i, 1));
+            }
         }
 
         public boolean isInside(Location loc) {
@@ -251,7 +300,7 @@ public class Stargate implements Listener, PluginUtility {
         }
 
         public boolean isValid(Location forcedAirLocation) {
-            return verifier.verify(null, stand.getLocation(), 0, forcedAirLocation);
+            return verifier.verify(null, stand.getLocation(), 1, forcedAirLocation);
         }
 
         public void update() {
@@ -259,44 +308,54 @@ public class Stargate implements Listener, PluginUtility {
                 return;
             }
             timer = 0;
-            if (direction > 0) {
-                Block b = getRingBlock(0);
-                Material m0 = b.getType();
-                byte d0 = b.getData();
-                for (int i=0; i < 27; i++) {
-                    b = getRingBlock(i + 1);
-                    setRingBlock(i, b.getType(), b.getData());
-                }
-                setRingBlock(27, m0, d0);
-            } else {
-                Block b = getRingBlock(27);
-                Material m0 = b.getType();
-                byte d0 = b.getData();
-                for (int i=27; i > 0; i--) {
-                    b = getRingBlock(i - 1);
-                    setRingBlock(i, b.getType(), b.getData());
-                }
-                setRingBlock(0, m0, d0);
+            rotation = (rotation + direction + 28) % 28;
+            drawRing();
+        }
+
+        private void drawRing() {
+            for (int i=0; i<28; i++) {
+                BlockInfo b = initialRing[(i + rotation)%28];
+                b.apply(getRingBlock(i, 1));
+                b.apply(getRingBlock(i, -1));
             }
         }
 
-        Block getRingBlock(int n) {
+        Block getRingBlock(int n, int dx) {
             Location c = center.clone();
-            return c.add(1, ring[n*2 + 1], ring[n*2]).getBlock();
-        }
-
-        void setRingBlock(int n, Material m, byte d) {
-            Block b = getRingBlock(n);
-            b.setType(m);
-            b.setData(d);
-            b = b.getLocation().add(-2, 0, 0).getBlock();
-            b.setType(m);
-            b.setData(d);
+            return c.add(dx, ring[n*2 + 1], ring[n*2]).getBlock();
         }
 
         public void destroy() {
+            rotation = 0;
+            drawRing();
         }
 
+        public void openInventory(Player player) {
+            if (inventory != null) {
+                player.openInventory(inventory);
+                return;
+            }
+            inventory = Bukkit.createInventory(player, InventoryType.CHEST, "Stargate");
+            InventoryView view = player.openInventory(inventory);
+
+            ItemStack[] contents = view.getTopInventory().getContents();
+            ItemStack glass = new ItemStack(Material.STAINED_GLASS_PANE, 1, (byte) 8);
+            ItemMeta m = glass.getItemMeta();
+            m.setDisplayName(" ");
+            m.setLore(Collections.singletonList("."));
+            glass.setItemMeta(m);
+            for (int i=0; i<contents.length; i++) {
+                if (i == 4) {
+                    ItemStack disk = stand.getItemInHand();
+                    if (disk != null) {
+                        contents[i] = disk;
+                    }
+                } else {
+                    contents[i] = glass;
+                }
+            }
+            view.getTopInventory().setContents(contents);
+        }
     }
 
 }
