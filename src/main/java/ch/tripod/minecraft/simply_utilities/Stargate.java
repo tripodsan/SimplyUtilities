@@ -25,7 +25,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
-import org.bukkit.event.inventory.InventoryType;
+import org.bukkit.event.inventory.*;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryView;
@@ -36,8 +36,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
 
-import java.util.Collections;
-import java.util.HashMap;
+import java.util.*;
 
 /**
  * {@code Main}...
@@ -45,6 +44,8 @@ import java.util.HashMap;
 public class Stargate implements Listener, PluginUtility {
 
     private final static String STRUCTURE_PREFIX = "stargate-";
+
+    private final static String INVENTORY_NAME = "Stargate";
 
     private JavaPlugin plugin;
 
@@ -126,6 +127,42 @@ public class Stargate implements Listener, PluginUtility {
             }
         }
     }
+
+    @EventHandler
+    public void onInventoryDrag(InventoryDragEvent evt) {
+        Inventory i = evt.getInventory();
+        if (i != null && i.getName().startsWith(INVENTORY_NAME)) {
+            Log.info("evt: %s", evt);
+            evt.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onInventoryClick(InventoryClickEvent evt) {
+        Inventory i = evt.getClickedInventory();
+        if (i == null || !i.getName().startsWith(INVENTORY_NAME)) {
+            return;
+        }
+//        Log.info("evt: %s", evt);
+        evt.setCancelled(true);
+//        ItemStack s = evt.getCursor();
+//        ItemStack c = evt.getCurrentItem();
+//        Log.info("i: %s, cursor: %s, current: %s", i, s, c);
+        InventoryView view = evt.getView();
+        for (Structure gate: structures.values()) {
+            if (gate.isInventoryOpen(view)) {
+                Log.info("inventory belongs to: %s", gate.key);
+                gate.onGuiClick(evt, evt.getCurrentItem());
+            }
+        }
+    }
+
+    @EventHandler
+    public void onInventoryClose(InventoryCloseEvent evt) {
+        //
+        Log.info("evt: %s", evt);
+    }
+
     private String getKey(Location loc) {
         return STRUCTURE_PREFIX + loc.getBlockX() + ":" + loc.getBlockY() + ":" + loc.getBlockZ();
     }
@@ -182,7 +219,7 @@ public class Stargate implements Listener, PluginUtility {
 
     private Structure getStructure(World world, String key) {
         for (ArmorStand a : world.getEntitiesByClass(ArmorStand.class)) {
-            if (a.getCustomName().equals(key)) {
+            if (key.equals(a.getCustomName())) {
                 return structures.computeIfAbsent(key, k -> new Structure(a));
             }
         }
@@ -216,6 +253,8 @@ public class Stargate implements Listener, PluginUtility {
 
     private class Structure {
 
+        private static final String SYMBOLS = "⨊ΔΘ⎋⫷⎎⏍⎇Ψ∅₪Æ";
+
         private final ArmorStand stand;
 
         private final String key;
@@ -229,10 +268,13 @@ public class Stargate implements Listener, PluginUtility {
 
         private int rotation = 0;
 
-        private int direction = 1;
+        private int direction = 0;
 
         private Inventory inventory;
 
+        private InventoryView view;
+
+        private String stargateCode = "";
 
         /**
          * 5     101
@@ -293,6 +335,17 @@ public class Stargate implements Listener, PluginUtility {
             for (int i=0; i<28;i++) {
                 initialRing[i] = new BlockInfo(getRingBlock(i, 1));
             }
+
+            long seed = center.getWorld().getName().hashCode();
+            seed = 31 * seed + center.getBlockX();
+            seed = 31 * seed + center.getBlockY();
+            seed = 31 * seed + center.getBlockZ();
+            Random r = new Random(seed);
+            for (int i=0; i<12; i++) {
+                int c = r.nextInt(12);
+                stargateCode += SYMBOLS.substring(c, c + 1);
+            }
+            Log.info("Stargate initialized in %s with %s", center.getWorld().getName(), stargateCode);
         }
 
         public boolean isInside(Location loc) {
@@ -308,8 +361,10 @@ public class Stargate implements Listener, PluginUtility {
                 return;
             }
             timer = 0;
-            rotation = (rotation + direction + 28) % 28;
-            drawRing();
+            if (direction != 0) {
+                rotation = (rotation + direction + 28) % 28;
+                drawRing();
+            }
         }
 
         private void drawRing() {
@@ -330,31 +385,91 @@ public class Stargate implements Listener, PluginUtility {
             drawRing();
         }
 
+        public ItemStack createButton(Material mat, int data, String name, String ...lore) {
+            ItemStack button = new ItemStack(mat, 1, (byte) data);
+            ItemMeta m = button.getItemMeta();
+            m.setDisplayName(name);
+            m.setLore(Arrays.asList(lore));
+            button.setItemMeta(m);
+            return button;
+        }
+
+        public boolean isInventoryOpen(InventoryView v) {
+            return v == view;
+        }
+
         public void openInventory(Player player) {
             if (inventory != null) {
-                player.openInventory(inventory);
+                view = player.openInventory(inventory);
                 return;
             }
-            inventory = Bukkit.createInventory(player, InventoryType.CHEST, "Stargate");
-            InventoryView view = player.openInventory(inventory);
+            inventory = Bukkit.createInventory(player, 54, INVENTORY_NAME + " " + stargateCode);
+            view = player.openInventory(inventory);
+
+            ItemStack glass = createButton(Material.STAINED_GLASS_PANE, 8, " ", ".");
+            ItemStack btnOk = createButton(Material.EMERALD_BLOCK, 0, "Ok", "\"Locks in\" the string entered.");
+            ItemStack btnCancel = createButton(Material.REDSTONE_BLOCK, 0, "Cancel", "Deletes the string entered.");
+            ItemStack dispEntered = createButton(Material.DIAMOND_BLOCK, 0, "String Entered", "The string entered.");
+            ItemStack dispGenerated = createButton(Material.PURPUR_BLOCK, 0, "Co-ordinate String", "Chats out the co-ordinates of this stargate.");
+
 
             ItemStack[] contents = view.getTopInventory().getContents();
-            ItemStack glass = new ItemStack(Material.STAINED_GLASS_PANE, 1, (byte) 8);
-            ItemMeta m = glass.getItemMeta();
-            m.setDisplayName(" ");
-            m.setLore(Collections.singletonList("."));
-            glass.setItemMeta(m);
             for (int i=0; i<contents.length; i++) {
-                if (i == 4) {
-                    ItemStack disk = stand.getItemInHand();
-                    if (disk != null) {
-                        contents[i] = disk;
-                    }
-                } else {
-                    contents[i] = glass;
+                contents[i] = glass;
+            }
+            contents[0] = dispEntered;
+            contents[1] = dispGenerated;
+            contents[7] = btnOk;
+            contents[8] = btnCancel;
+            for (int y=0; y<4; y++) {
+                for (int x=0; x<3; x++) {
+                    String s = SYMBOLS.substring(y*3+x, y*3+x + 1);
+                    contents[y*9+18 + x + 3] = createButton(Material.STAINED_GLASS_PANE, 1, s, "§" + s);
                 }
             }
             view.getTopInventory().setContents(contents);
+        }
+
+        private void setSymbolString(String s) {
+            if (view == null) {
+                return;
+            }
+            ItemStack[] contents = view.getTopInventory().getContents();
+            ItemMeta m = contents[0].getItemMeta();
+            m.setLore(Arrays.asList("The string entered.", s));
+            contents[0].setItemMeta(m);
+            Log.info("symbol string set to: %s", s);
+        }
+
+        private String getSymbolString() {
+            if (view == null) {
+                return "";
+            }
+            ItemStack[] contents = view.getTopInventory().getContents();
+            ItemMeta m = contents[0].getItemMeta();
+            List<String> lore = m.getLore();
+            return lore.size() > 1 ? lore.get(1) : "";
+        }
+
+        private void onGuiClick(InventoryClickEvent evt, ItemStack s) {
+            Log.info("click %s on %s", s, key);
+            ItemMeta m = s.getItemMeta();
+            String name = m.getDisplayName();
+            if ("Ok".equals(name)) {
+                Log.info("ok!");
+            } else if ("Cancel".equals(name)) {
+                Log.info("cancel!");
+                setSymbolString("");
+
+            } else if ("Co-ordinate String".equals(name)) {
+                Log.info("Co-ordinate String!");
+                evt.getWhoClicked().sendMessage("Stargate string: " + stargateCode);
+
+            } else if (SYMBOLS.contains(name)) {
+                Log.info("Symbol: %s", name);
+                setSymbolString(getSymbolString() + name);
+
+            }
         }
     }
 
