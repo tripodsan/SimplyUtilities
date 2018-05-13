@@ -255,6 +255,8 @@ public class Stargate implements Listener, PluginUtility {
 
         private static final String SYMBOLS = "⨊ΔΘ⎋⫷⎎⏍⎇Ψ∅₪Æ";
 
+        private static final String SYMBOL_CODES = "abcdefghijkl";
+
         private final ArmorStand stand;
 
         private final String key;
@@ -406,11 +408,11 @@ public class Stargate implements Listener, PluginUtility {
             inventory = Bukkit.createInventory(player, 54, INVENTORY_NAME + " " + stargateCode);
             view = player.openInventory(inventory);
 
-            ItemStack glass = createButton(Material.STAINED_GLASS_PANE, 8, " ", ".");
-            ItemStack btnOk = createButton(Material.EMERALD_BLOCK, 0, "Ok", "\"Locks in\" the string entered.");
-            ItemStack btnCancel = createButton(Material.REDSTONE_BLOCK, 0, "Cancel", "Deletes the string entered.");
-            ItemStack dispEntered = createButton(Material.DIAMOND_BLOCK, 0, "String Entered", "The string entered.");
-            ItemStack dispGenerated = createButton(Material.PURPUR_BLOCK, 0, "Co-ordinate String", "Chats out the co-ordinates of this stargate.");
+            ItemStack glass = createButton(Material.STAINED_GLASS_PANE, 8, " ", "§.");
+            ItemStack btnOk = createButton(Material.EMERALD, 0, "Ok", "\"Locks in\" the string entered.");
+            ItemStack btnCancel = createButton(Material.REDSTONE, 0, "Cancel", "Deletes the string entered.");
+            ItemStack dispEntered = createButton(Material.DIAMOND, 0, "String Entered", "The string entered.");
+            ItemStack dispGenerated = createButton(Material.CHORUS_FRUIT_POPPED, 0, "Co-ordinate String", "Chats out the co-ordinates of this stargate.");
 
 
             ItemStack[] contents = view.getTopInventory().getContents();
@@ -423,8 +425,9 @@ public class Stargate implements Listener, PluginUtility {
             contents[8] = btnCancel;
             for (int y=0; y<4; y++) {
                 for (int x=0; x<3; x++) {
-                    String s = SYMBOLS.substring(y*3+x, y*3+x + 1);
-                    contents[y*9+18 + x + 3] = createButton(Material.STAINED_GLASS_PANE, 1, s, "§" + s);
+                    int i = y*3+x;
+                    String s = SYMBOLS.substring(i, i + 1);
+                    contents[y*9+18 + x + 3] = createButton(Material.STAINED_GLASS_PANE, 1, s, "§" + SYMBOL_CODES.substring(i, i + 1));
                 }
             }
             view.getTopInventory().setContents(contents);
