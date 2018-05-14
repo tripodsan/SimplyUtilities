@@ -372,7 +372,7 @@ public class Stargate implements Listener, PluginUtility {
             boxMin = center.toVector().subtract(d1);
             boxMax = center.toVector().add(d2);
 
-            for (int i=0; i<28;i++) {
+            for (int i = 0; i < 28; i++) {
                 initialRing[i] = new BlockInfo(getRingBlock(i, 1));
             }
 
@@ -381,7 +381,7 @@ public class Stargate implements Listener, PluginUtility {
             seed = 31 * seed + center.getBlockY();
             seed = 31 * seed + center.getBlockZ();
             Random r = new Random(seed);
-            for (int i=0; i<12; i++) {
+            for (int i = 0; i < 12; i++) {
                 int c = r.nextInt(12);
                 stargateCode += SYMBOLS.substring(c, c + 1);
             }
@@ -429,8 +429,8 @@ public class Stargate implements Listener, PluginUtility {
         }
 
         private void drawRing() {
-            for (int i=0; i<28; i++) {
-                BlockInfo b = initialRing[(i + rotation)%28];
+            for (int i = 0; i < 28; i++) {
+                BlockInfo b = initialRing[(i + rotation) % 28];
                 b.apply(getRingBlock(i, 1));
                 b.apply(getRingBlock(i, -1));
             }
@@ -438,7 +438,7 @@ public class Stargate implements Listener, PluginUtility {
 
         Block getRingBlock(int n, int dx) {
             Location c = center.clone();
-            return c.add(dx, ring[n*2 + 1], ring[n*2]).getBlock();
+            return c.add(dx, ring[n * 2 + 1], ring[n * 2]).getBlock();
         }
 
         public void destroy() {
@@ -467,20 +467,21 @@ public class Stargate implements Listener, PluginUtility {
 
 
             ItemStack[] contents = view.getTopInventory().getContents();
-            for (int i=0; i<contents.length; i++) {
+            for (int i = 0; i < contents.length; i++) {
                 contents[i] = glass;
             }
             contents[0] = dispEntered;
             contents[1] = dispGenerated;
             contents[7] = btnOk;
             contents[8] = btnCancel;
-            for (int y=0; y<4; y++) {
-                for (int x=0; x<3; x++) {
-                    int i = y*3+x;
+            for (int y = 0; y < 4; y++) {
+                for (int x = 0; x < 3; x++) {
+                    int i = y * 3 + x;
                     String s = SYMBOLS.substring(i, i + 1);
-                    contents[y*9+18 + x + 3] = createButton(Material.STAINED_GLASS_PANE, 1, s, "§" + SYMBOL_CODES.substring(i, i + 1));
+                    contents[y * 9 + 18 + x + 3] = createButton(Material.STAINED_GLASS_PANE, 1, s, "§" + SYMBOL_CODES.substring(i, i + 1));
                 }
             }
+            contents[13] = createButton(Material.STAINED_GLASS_PANE, 1, "⬅", "§m");
             view.getTopInventory().setContents(contents);
             setSymbolString(targetSymbol);
         }
@@ -540,8 +541,12 @@ public class Stargate implements Listener, PluginUtility {
                 Log.info("Symbol: %s", name);
                 setSymbolString(getSymbolString() + name);
 
+            } else if (name.equals("⬅")) {
+                Log.info("Symbol: %s", name);
+                if (getSymbolString().length() > 0) {
+                    setSymbolString(getSymbolString().substring(0, getSymbolString().length()-1));
+                }
             }
         }
     }
-
 }
