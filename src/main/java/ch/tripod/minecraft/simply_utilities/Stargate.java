@@ -120,11 +120,26 @@ public class Stargate implements Listener, PluginUtility {
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
         if (event.getAction() == Action.RIGHT_CLICK_BLOCK) {
-            Structure a = getStructure(event.getClickedBlock());
+            Block cb = event.getClickedBlock();
+            if (event.getPlayer().isSneaking()) {
+                if (cb.getType() == Material.ENDER_PORTAL_FRAME && cb.getData() >= 4) {
+                    cb.setData((byte) (cb.getData() - 4));
+                    cb.getWorld().dropItemNaturally(cb.getLocation(), new ItemStack(Material.EYE_OF_ENDER));
+                    event.setCancelled(true);
+                }
+                return;
+            }
+            Structure a = getStructure(cb);
             if (a != null) {
+                if (cb.getData() < 4 && event.hasItem() && event.getItem().getType() == Material.EYE_OF_ENDER) {
+                    Log.info("haha! stargate thingy inserted");
+                    a.checkPrimed = true;
+                }
+
                 a.openInventory(event.getPlayer());
                 event.setCancelled(true);
             }
+
         }
     }
 
@@ -178,6 +193,7 @@ public class Stargate implements Listener, PluginUtility {
         a.setVisible(true);
         a.setGravity(false);
         a.setMarker(true);
+        a.setItemInHand(createButton(Material.STAINED_GLASS_PANE, 8, "", "§."));
 
         // play effect
         float red = 0f;
@@ -235,6 +251,15 @@ public class Stargate implements Listener, PluginUtility {
         }
     }
 
+    private Structure getStargateWithSymbol(String sym) {
+        for (Structure s: structures.values()) {
+            if (sym.equals(s.stargateCode)) {
+                return s;
+            }
+        }
+        return null;
+    }
+
     private static class BlockInfo {
         public final Material m;
 
@@ -249,6 +274,15 @@ public class Stargate implements Listener, PluginUtility {
             b.setType(m);
             b.setData(d);
         }
+    }
+
+    public ItemStack createButton(Material mat, int data, String name, String ...lore) {
+        ItemStack button = new ItemStack(mat, 1, (byte) data);
+        ItemMeta m = button.getItemMeta();
+        m.setDisplayName(name);
+        m.setLore(Arrays.asList(lore));
+        button.setItemMeta(m);
+        return button;
     }
 
     private class Structure {
@@ -277,6 +311,10 @@ public class Stargate implements Listener, PluginUtility {
         private InventoryView view;
 
         private String stargateCode = "";
+
+        private String targetSymbol = null;
+
+        private boolean checkPrimed = false;
 
         /**
          * 5     101
@@ -348,6 +386,20 @@ public class Stargate implements Listener, PluginUtility {
                 stargateCode += SYMBOLS.substring(c, c + 1);
             }
             Log.info("Stargate initialized in %s with %s", center.getWorld().getName(), stargateCode);
+
+            if (stand.getItemInHand() != null && stand.getItemInHand().getItemMeta() != null) {
+                targetSymbol = stand.getItemInHand().getItemMeta().getDisplayName();
+            }
+            if (targetSymbol == null || targetSymbol.length() == 0) {
+                Log.info("Stargate not linked");
+            } else {
+                Log.info("Stargate linked to %s", targetSymbol);
+            }
+
+        }
+
+        public boolean isPrimed() {
+            return stand.getLocation().getBlock().getData() >= 4 && targetSymbol != null && targetSymbol.length() > 0;
         }
 
         public boolean isInside(Location loc) {
@@ -359,6 +411,13 @@ public class Stargate implements Listener, PluginUtility {
         }
 
         public void update() {
+            if (checkPrimed) {
+                checkPrimed = false;
+                if (isPrimed()) {
+                    Log.info("todo: check if all stargates are primed and linked....");
+                }
+            }
+
             if (++timer < 2) {
                 return;
             }
@@ -387,15 +446,6 @@ public class Stargate implements Listener, PluginUtility {
             drawRing();
         }
 
-        public ItemStack createButton(Material mat, int data, String name, String ...lore) {
-            ItemStack button = new ItemStack(mat, 1, (byte) data);
-            ItemMeta m = button.getItemMeta();
-            m.setDisplayName(name);
-            m.setLore(Arrays.asList(lore));
-            button.setItemMeta(m);
-            return button;
-        }
-
         public boolean isInventoryOpen(InventoryView v) {
             return v == view;
         }
@@ -403,6 +453,7 @@ public class Stargate implements Listener, PluginUtility {
         public void openInventory(Player player) {
             if (inventory != null) {
                 view = player.openInventory(inventory);
+                setSymbolString(targetSymbol);
                 return;
             }
             inventory = Bukkit.createInventory(player, 54, INVENTORY_NAME + " " + stargateCode);
@@ -431,11 +482,15 @@ public class Stargate implements Listener, PluginUtility {
                 }
             }
             view.getTopInventory().setContents(contents);
+            setSymbolString(targetSymbol);
         }
 
         private void setSymbolString(String s) {
             if (view == null) {
                 return;
+            }
+            if (s == null) {
+                s = "";
             }
             ItemStack[] contents = view.getTopInventory().getContents();
             ItemMeta m = contents[0].getItemMeta();
@@ -460,9 +515,22 @@ public class Stargate implements Listener, PluginUtility {
             String name = m.getDisplayName();
             if ("Ok".equals(name)) {
                 Log.info("ok!");
+                String sym = getSymbolString();
+                Structure gate = getStargateWithSymbol(sym);
+                if (gate == null) {
+                    evt.getWhoClicked().sendMessage("Stargate with string " + sym + " does not exist.");
+                    targetSymbol = "";
+                } else {
+                    targetSymbol = sym;
+                    stand.setItemInHand(createButton(Material.STAINED_GLASS_PANE, 8, targetSymbol, "§."));
+                    evt.getWhoClicked().sendMessage("Linked to stargate with string " + sym);
+                    checkPrimed = true;
+                }
+
             } else if ("Cancel".equals(name)) {
                 Log.info("cancel!");
                 setSymbolString("");
+                targetSymbol = "";
 
             } else if ("Co-ordinate String".equals(name)) {
                 Log.info("Co-ordinate String!");
