@@ -94,6 +94,9 @@ public class Stargate implements Listener, PluginUtility {
     public void onBlockPlace(BlockPlaceEvent event) {
 
         if (event.getBlock().getType() == Material.ENDER_PORTAL_FRAME) {
+            if (event.getBlock().getData() >= 4) {
+                return;
+            }
             if (verifier.verify(event.getPlayer(), event.getBlock().getLocation(), 1)) {
                 Structure s = createStructure(event.getPlayer(), event.getBlock().getLocation(), event.getBlock().getState().getData());
             }
@@ -121,15 +124,18 @@ public class Stargate implements Listener, PluginUtility {
     public void onPlayerInteract(PlayerInteractEvent event) {
         if (event.getAction() == Action.RIGHT_CLICK_BLOCK) {
             Block cb = event.getClickedBlock();
+            Structure a = getStructure(cb);
             if (event.getPlayer().isSneaking()) {
                 if (cb.getType() == Material.ENDER_PORTAL_FRAME && cb.getData() >= 4) {
                     cb.setData((byte) (cb.getData() - 4));
                     cb.getWorld().dropItemNaturally(cb.getLocation(), new ItemStack(Material.EYE_OF_ENDER));
                     event.setCancelled(true);
+                    if (a != null) {
+                        a.checkPrimed = true;
+                    }
                 }
                 return;
             }
-            Structure a = getStructure(cb);
             if (a != null) {
                 if (cb.getData() < 4 && event.hasItem() && event.getItem().getType() == Material.EYE_OF_ENDER) {
                     Log.info("haha! stargate thingy inserted");
@@ -285,6 +291,19 @@ public class Stargate implements Listener, PluginUtility {
         return button;
     }
 
+    private enum GateState {
+
+        INITIAL,
+
+        /** target symbol inserted and valid and eye inserted */
+        PRIMED,
+
+        CHEVRON_LOCKING,
+
+        ACTIVE
+
+    }
+
     private class Structure {
 
         private static final String SYMBOLS = "⨊ΔΘ⎋⫷⎎⏍⎇Ψ∅₪Æ";
@@ -304,6 +323,8 @@ public class Stargate implements Listener, PluginUtility {
 
         private int rotation = 0;
 
+        private int targetRotation = 0;
+
         private int direction = 0;
 
         private Inventory inventory;
@@ -316,6 +337,9 @@ public class Stargate implements Listener, PluginUtility {
 
         private boolean checkPrimed = false;
 
+        private GateState state = GateState.INITIAL;
+
+        private int activationSequenceStep = 0;
         /**
          * 5     101
          * 4   32   23
@@ -399,7 +423,13 @@ public class Stargate implements Listener, PluginUtility {
         }
 
         public boolean isPrimed() {
-            return stand.getLocation().getBlock().getData() >= 4 && targetSymbol != null && targetSymbol.length() > 0;
+            if (stand.getLocation().getBlock().getData() >= 4 && targetSymbol != null && targetSymbol.length() > 0) {
+                state = GateState.PRIMED;
+                return true;
+            } else {
+                state = GateState.INITIAL;
+                return false;
+            }
         }
 
         public boolean isInside(Location loc) {
@@ -410,11 +440,55 @@ public class Stargate implements Listener, PluginUtility {
             return verifier.verify(null, stand.getLocation(), 1, forcedAirLocation);
         }
 
+        public boolean checkAllValid(Map<String, Structure> list) {
+            if (list.containsKey(stargateCode)) {
+                return true;
+            }
+            if (!isPrimed()) {
+                return false;
+            }
+            list.put(stargateCode, this);
+            Structure target = getStargateWithSymbol(targetSymbol);
+            if (target == null) {
+                return false;
+            }
+            return target.checkAllValid(list);
+        }
+
+        public void startActivationSequence() {
+            if (state == GateState.PRIMED) {
+                state = GateState.CHEVRON_LOCKING;
+                activationSequenceStep = -1;
+                targetRotation = rotation;
+                Utils.broadcast(center,"Stargate " + stargateCode + " beginning activation sequence for link to stargate " + targetSymbol, 20);
+            }
+        }
+
         public void update() {
             if (checkPrimed) {
                 checkPrimed = false;
-                if (isPrimed()) {
-                    Log.info("todo: check if all stargates are primed and linked....");
+                Log.info("todo: check if all stargates are primed and linked....");
+                Map<String, Structure> list = new HashMap<>();
+                if (checkAllValid(list)) {
+                    for (Structure s: list.values()) {
+                        s.startActivationSequence();
+                    }
+                }
+            }
+
+            if (state == GateState.CHEVRON_LOCKING) {
+                if (targetRotation == rotation) {
+                    activationSequenceStep++;
+                    if (activationSequenceStep == 12) {
+                        Log.info("all locked");
+                        state = GateState.ACTIVE;
+                        direction = 0;
+                    } else {
+                        Log.info("%s locking chevron %d", stargateCode, activationSequenceStep);
+                        int steps = SYMBOLS.indexOf(stargateCode.charAt(activationSequenceStep));
+                        direction = (activationSequenceStep % 2) == 0 ? -1 : 1;
+                        targetRotation = (rotation + steps * direction + 28) % 28;
+                    }
                 }
             }
 
@@ -520,7 +594,6 @@ public class Stargate implements Listener, PluginUtility {
                 Structure gate = getStargateWithSymbol(sym);
                 if (gate == null) {
                     evt.getWhoClicked().sendMessage("Stargate with string " + sym + " does not exist.");
-                    targetSymbol = "";
                 } else {
                     targetSymbol = sym;
                     stand.setItemInHand(createButton(Material.STAINED_GLASS_PANE, 8, targetSymbol, "§."));
@@ -532,6 +605,7 @@ public class Stargate implements Listener, PluginUtility {
                 Log.info("cancel!");
                 setSymbolString("");
                 targetSymbol = "";
+                checkPrimed = true;
 
             } else if ("Co-ordinate String".equals(name)) {
                 Log.info("Co-ordinate String!");
