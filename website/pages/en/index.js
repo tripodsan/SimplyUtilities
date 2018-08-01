@@ -144,7 +144,7 @@ const TryOut = props => (
   <Block id="try">
     {[
       {
-        content: 'Talk about trying this out',
+        content: 'Download <a href="/dist/simply-utilities-plugin-1.0.0-SNAPSHOT.jar">simply-utilities-plugin-1.0.0-SNAPSHOT.jar</a>',
         image: imgUrl('docusaurus.svg'),
         imageAlign: 'left',
         title: 'Try it Out',
